@@ -1,93 +1,303 @@
-# mcps-proj
+# Fixed Schema Response MCP Server
 
+A Model Context Protocol (MCP) server that processes user queries and returns responses in a fixed schema format (e.g., JSON). Similar to OpenAI's Structured Outputs feature, this MCP server constrains model responses to follow a predefined structure, making outputs more predictable and easier to parse programmatically.
 
+## Features
 
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://gitlab.aws.dev/fanhongy/mcps-proj.git
-git branch -M main
-git push -uf origin main
-```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://gitlab.aws.dev/fanhongy/mcps-proj/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+- **Schema-Based Responses**: Define JSON schemas to structure AI-generated content
+- **Schema Validation**: Automatically validate responses against defined schemas
+- **Error Handling**: Properly formatted error responses that follow the schema
+- **Dynamic Configuration**: Update schemas and settings without server restart
+- **Kiro Integration**: Seamlessly works with Kiro as an MCP server
+- **Multiple Model Support**: Works with Amazon Bedrock (Claude) and OpenAI models
 
 ## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+### Prerequisites
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+- Python 3.8 or higher
+- pip (Python package manager)
+- AWS credentials configured (if using Amazon Bedrock)
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+### Install from PyPI
+
+```bash
+pip install fixed-schema-mcp-server
+```
+
+### Install from Source
+
+```bash
+git clone https://github.com/yourusername/fixed-schema-mcp-server.git
+cd fixed-schema-mcp-server
+pip install -e .
+```
+
+## Quick Start
+
+### 1. Create a Configuration File
+
+#### For Amazon Bedrock (Claude):
+
+```json
+{
+  "server": {
+    "host": "localhost",
+    "port": 8000,
+    "log_level": "info"
+  },
+  "model": {
+    "provider": "bedrock",
+    "model_id": "anthropic.claude-3-5-sonnet-20240620-v1:0",
+    "region": "us-east-1",
+    "parameters": {
+      "temperature": 0.7,
+      "top_p": 0.9,
+      "max_tokens": 1000
+    }
+  },
+  "schemas": {
+    "path": "./schemas",
+    "default_schema": "product_info"
+  }
+}
+```
+
+#### For OpenAI:
+
+```json
+{
+  "server": {
+    "host": "localhost",
+    "port": 8000,
+    "log_level": "info"
+  },
+  "model": {
+    "provider": "openai",
+    "model_name": "gpt-4",
+    "api_key": "YOUR_API_KEY",
+    "parameters": {
+      "temperature": 0.7,
+      "top_p": 1.0,
+      "max_tokens": 1000
+    }
+  },
+  "schemas": {
+    "path": "./schemas",
+    "default_schema": "product_info"
+  }
+}
+```
+
+### 2. Create a Schema
+
+Create a directory named `schemas` and add a schema file:
+
+```json
+{
+  "name": "product_info",
+  "description": "Schema for product information responses",
+  "schema": {
+    "type": "object",
+    "required": ["name", "description", "price", "category"],
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "The name of the product"
+      },
+      "description": {
+        "type": "string",
+        "description": "A detailed description of the product"
+      },
+      "price": {
+        "type": "number",
+        "description": "The price of the product in USD"
+      },
+      "category": {
+        "type": "string",
+        "description": "The category the product belongs to"
+      },
+      "features": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "List of product features"
+      }
+    }
+  },
+  "system_prompt": "You are a product information assistant. Provide information about products in a structured format."
+}
+```
+
+### 3. Configure AWS Credentials (for Bedrock)
+
+If using Amazon Bedrock, ensure your AWS credentials are properly configured:
+
+```bash
+# Configure AWS CLI
+aws configure
+```
+
+You'll need to enter:
+- AWS Access Key ID
+- AWS Secret Access Key
+- Default region (choose a region where Bedrock is available, like us-east-1 or us-west-2)
+- Default output format (json)
+
+Make sure your AWS account has access to Amazon Bedrock and the Claude model.
+
+### 4. Start the Server
+
+```bash
+fixed-schema-mcp-server --config config.json
+```
+
+### 5. Configure Kiro
+
+Add the following to your Kiro MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "fixed-schema": {
+      "command": "fixed-schema-mcp-server",
+      "args": ["--config", "config.json"],
+      "env": {
+        "FIXED_SCHEMA_MCP_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
+```
+
+## Troubleshooting MCP Server Connection
+
+If you encounter issues connecting the MCP server to Kiro, try these steps:
+
+### 1. Check Port Availability
+
+Make sure the port specified in your config.json is available:
+
+```bash
+# Check if port 8000 is in use
+lsof -i :8000
+```
+
+If the port is in use, change it in your config.json.
+
+### 2. Use Absolute Paths
+
+Use absolute paths in your configuration to avoid path resolution issues:
+
+```json
+{
+  "schemas": {
+    "path": "/absolute/path/to/schemas",
+    "default_schema": "product_info"
+  }
+}
+```
+
+### 3. Check Dependencies
+
+Ensure all required dependencies are installed:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Use a Virtual Environment
+
+Create a dedicated virtual environment for the MCP server:
+
+```bash
+python -m venv fixed_schema_mcp_venv
+source fixed_schema_mcp_venv/bin/activate
+pip install -e .
+```
+
+### 5. Create a Wrapper Script
+
+If you're having issues with the MCP protocol, create a wrapper script:
+
+```bash
+#!/bin/bash
+# run_mcp.sh
+
+# Get the directory of this script
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Set up the virtual environment path
+VENV_PATH="${SCRIPT_DIR}/../fixed_schema_mcp_venv"
+
+# Activate the virtual environment
+source "$VENV_PATH/bin/activate"
+
+# Run the server
+python "$SCRIPT_DIR/run_server.py" "$@"
+```
+
+Then update your Kiro configuration:
+
+```json
+{
+  "mcpServers": {
+    "fixed-schema": {
+      "command": "/path/to/run_mcp.sh",
+      "args": [
+        "--config",
+        "/path/to/config.json",
+        "--log-level",
+        "INFO"
+      ]
+    }
+  }
+}
+```
+
+### 6. Check Logs
+
+Enable detailed logging to troubleshoot connection issues:
+
+```bash
+fixed-schema-mcp-server --config config.json --log-level DEBUG
+```
+
+## Testing
+
+You can test the server using the included test client:
+
+```bash
+# Test with the product_info schema
+python test_client.py "Tell me about the latest iPhone" --schema product_info
+
+# Test with another schema
+python test_client.py "Summarize the latest news about AI advancements" --schema article_summary
+```
+
+## Documentation
+
+For more detailed information, check out:
+
+- [Installation Guide](fixed_schema_mcp_server/docs/installation/README.md)
+- [Schema Documentation](fixed_schema_mcp_server/docs/schema/README.md)
+- [API Reference](fixed_schema_mcp_server/docs/api/README.md)
+- [Troubleshooting](fixed_schema_mcp_server/docs/troubleshooting/README.md)
+- [Performance Tuning](fixed_schema_mcp_server/docs/performance/README.md)
+
+## Use Cases
+
+- **API Development**: Generate structured data for API responses
+- **Data Extraction**: Extract specific information from unstructured text
+- **Form Filling**: Generate structured data for form submissions
+- **Content Generation**: Create structured content for websites or applications
+- **Data Transformation**: Convert between different data formats
 
 ## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+This project is licensed under the MIT License - see the LICENSE file for details.

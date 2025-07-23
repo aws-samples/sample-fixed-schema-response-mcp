@@ -1,0 +1,108 @@
+{
+  "name": "troubleshooting_guide",
+  "description": "Schema for technical troubleshooting guides",
+  "schema": {
+    "type": "object",
+    "required": ["issue", "summary", "root_causes", "solutions"],
+    "properties": {
+      "issue": {
+        "type": "string",
+        "description": "The title or description of the issue being troubleshooted"
+      },
+      "summary": {
+        "type": "string",
+        "description": "A brief summary of the issue and its impact"
+      },
+      "symptoms": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Observable symptoms or error messages"
+      },
+      "affected_systems": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Systems, components, or environments affected by the issue"
+      },
+      "root_causes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "cause": {
+              "type": "string",
+              "description": "Description of a potential root cause"
+            },
+            "likelihood": {
+              "type": "string",
+              "enum": ["high", "medium", "low"],
+              "description": "Likelihood of this being the actual cause"
+            }
+          }
+        },
+        "description": "Potential root causes of the issue"
+      },
+      "solutions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "description": "Brief title for the solution"
+            },
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Step-by-step instructions to implement the solution"
+            },
+            "complexity": {
+              "type": "string",
+              "enum": ["simple", "moderate", "complex"],
+              "description": "Complexity level of implementing this solution"
+            },
+            "prerequisites": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Prerequisites or requirements for this solution"
+            }
+          },
+          "required": ["title", "steps"]
+        },
+        "description": "Possible solutions to resolve the issue"
+      },
+      "prevention": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Measures to prevent the issue from recurring"
+      },
+      "references": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "description": "Title of the reference"
+            },
+            "url": {
+              "type": "string",
+              "description": "URL to the reference material"
+            }
+          }
+        },
+        "description": "References to documentation, knowledge base articles, or other resources"
+      }
+    }
+  },
+  "system_prompt": "You are a technical support specialist. Provide comprehensive troubleshooting guides for technical issues in a structured format. Include detailed information about symptoms, causes, and solutions to help users resolve problems efficiently."
+}

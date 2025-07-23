@@ -1,0 +1,46 @@
+{
+  "mcpServers": {
+    "fixed-schema": {
+      "command": "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server/run_mcp.sh",
+      "args": [
+        "--config",
+        "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server/test_config/config.json",
+        "--log-level",
+        "INFO"
+      ],
+      "env": {
+        "FIXED_SCHEMA_MCP_LOG_LEVEL": "INFO"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "product_info",
+        "article_summary",
+        "person_profile",
+        "api_endpoint",
+        "troubleshooting_guide"
+      ]
+    },
+    "aws-docs": {
+      "command": "/opt/homebrew/bin/uvx",
+      "args": [
+        "awslabs.aws-documentation-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    },
+    "cdk-mcp": {
+      "command": "/opt/homebrew/bin/uvx",
+      "args": [
+        "awslabs.cdk-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}

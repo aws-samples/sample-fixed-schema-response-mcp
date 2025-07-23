@@ -1,0 +1,6 @@
+2025-07-23 14:56:55,705 - __main__ - INFO - MCP wrapper started
+2025-07-23 14:56:55,705 - __main__ - ERROR - Invalid header: {"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"kiro","version":"0.0.0"}},"jsonrpc":"2.0","id":0}
+2025-07-23 14:57:26,123 - __main__ - INFO - MCP wrapper started
+2025-07-23 14:57:55,430 - __main__ - ERROR - Invalid header: {"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":0,"reason":"MCP server connection + listTools timed out after 60 seconds"}}
+2025-07-23 14:57:55,430 - __main__ - INFO - MCP wrapper stopped
+2025-07-23 15:00:47,814 - __main__ - INFO - MCP wrapper started

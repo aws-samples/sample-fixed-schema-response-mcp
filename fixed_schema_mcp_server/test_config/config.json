@@ -1,0 +1,20 @@
+{
+    "server": {
+        "host": "localhost",
+        "port": 8081,
+        "log_level": "debug"
+    },
+    "model": {
+        "provider": "mock",
+        "model_id": "mock-claude-3-5-sonnet",
+        "parameters": {
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "max_tokens": 1000
+        }
+    },
+    "schemas": {
+        "path": "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server/test_config/schemas",
+        "default_schema": "product_info"
+    }
+}

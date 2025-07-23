@@ -1,0 +1,25 @@
+Metadata-Version: 2.4
+Name: fixed-schema-mcp-server
+Version: 0.1.0
+Summary: A Model Context Protocol server that returns responses in a fixed schema format
+Author: Your Name
+Author-email: your.email@example.com
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Requires-Python: >=3.8
+Requires-Dist: boto3>=1.28.0
+Requires-Dist: botocore>=1.31.0
+Requires-Dist: jsonschema>=4.0.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: aiohttp>=3.8.0
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
