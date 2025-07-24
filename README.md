@@ -4,14 +4,16 @@ A Model Context Protocol (MCP) server that processes user queries and returns re
 
 ## Quick Start
 
-1. **Setup** (run once):
+1. **Install dependencies** (run once):
    ```bash
-   ./fixed_schema_mcp_server/setup.sh
+   cd fixed_schema_mcp_server
+   uv sync
    ```
 
 2. **Run the server**:
    ```bash
-   ./fixed_schema_mcp_server/run_fastmcp.sh
+   cd fixed_schema_mcp_server
+   uv run fastmcp_server.py
    ```
 
 3. **Use in Kiro**:

@@ -256,25 +256,7 @@ Available logging levels:
 
 ## Alternative Configuration Methods
 
-### Method 1: Using Shell Script (if uv doesn't work)
-
-If you have issues with `uv`, you can use the shell script approach:
-
-```json
-{
-  "mcpServers": {
-    "fixed-schema": {
-      "command": "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server/run_fastmcp.sh",
-      "args": [],
-      "env": {
-        "FASTMCP_LOG_LEVEL": "INFO"
-      }
-    }
-  }
-}
-```
-
-### Method 2: Direct Python Execution
+### Method 1: Direct Python Execution
 
 ```json
 {

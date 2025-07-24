@@ -39,7 +39,7 @@ mcp = FastMCP("fixed-schema")
 try:
     bedrock_runtime = boto3.client(
         service_name='bedrock-runtime',
-        region_name='us-east-1'  # Change to your preferred region
+        region_name='us-west-2'  # Change to your preferred region
     )
     logger.info("Successfully initialized AWS Bedrock client")
 except Exception as e:
@@ -216,6 +216,11 @@ def invoke_claude(prompt: str, schema_name: str) -> Dict[str, Any]:
     Returns:
         The parsed JSON response from Claude
     """
+    logger.info(f"=== DEBUGGING invoke_claude ===")
+    logger.info(f"Prompt: {prompt}")
+    logger.info(f"Schema name: {schema_name}")
+    logger.info(f"Bedrock client available: {bedrock_runtime is not None}")
+    
     if bedrock_runtime is None:
         logger.warning("AWS Bedrock client not available, using mock response")
         return generate_mock_response(prompt, schema_name)
@@ -249,16 +254,25 @@ Respond ONLY with valid JSON that matches this schema. Do not include any explan
         }
         
         # Invoke Claude
+        logger.info(f"Attempting to invoke Claude with model: us.anthropic.claude-3-7-sonnet-20250219-v1:0")
+        logger.info(f"Request payload size: {len(json.dumps(request))} characters")
+        
         start_time = time.time()
         response = bedrock_runtime.invoke_model(
-            modelId="anthropic.claude-3-5-sonnet-20240620-v1:0",
+            modelId="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             body=json.dumps(request)
         )
         end_time = time.time()
         
+        logger.info(f"Claude API call successful in {end_time - start_time:.2f} seconds")
+        
         # Parse the response
         response_body = json.loads(response['body'].read().decode('utf-8'))
         content = response_body['content'][0]['text']
+        
+        logger.info(f"Raw Claude response: {content[:500]}...")  # First 500 chars
+        logger.info(f"Response starts with JSON: {content.strip().startswith('{')}")
+        logger.info(f"Response ends with JSON: {content.strip().endswith('}')}")
         
         # Try to extract JSON from the response
         try:
@@ -286,6 +300,9 @@ Respond ONLY with valid JSON that matches this schema. Do not include any explan
             
     except Exception as e:
         logger.error(f"Error invoking Claude: {e}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
         return generate_mock_response(prompt, schema_name)
 
 def generate_mock_response(prompt: str, schema_name: str) -> Dict[str, Any]:
