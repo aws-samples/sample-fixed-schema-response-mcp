@@ -28,7 +28,7 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     include_package_data=True,
     package_data={
         "": ["test_config/schemas/*.json"],

@@ -151,3 +151,10 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Kiro specs (internal development files)
+.kiro/specs/
+
+# temp
+temp-stuff
+temp-stuff/*
