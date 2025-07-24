@@ -1,8 +1,8 @@
-# Schema Definition Guide
+# Schema Definition Guide for FastMCP Edition
 
 ## Introduction
 
-The Fixed Schema Response MCP Server uses JSON Schema to define the structure of responses. This guide explains how to create and use schemas to ensure consistent, structured responses from language models.
+The Fixed Schema Response MCP Server (FastMCP Edition) uses JSON Schema to define the structure of responses. This guide explains how to create and use schemas to ensure consistent, structured responses from AWS Bedrock Claude.
 
 ## Schema File Format
 
@@ -14,8 +14,7 @@ Schema files are JSON files that define the structure of responses. Each schema 
   "description": "Description of the schema",
   "schema": {
     // JSON Schema definition
-  },
-  "system_prompt": "System prompt to guide the model's response generation"
+  }
 }
 ```
 
@@ -24,9 +23,36 @@ Schema files are JSON files that define the structure of responses. Each schema 
 | Field | Description | Required |
 |-------|-------------|----------|
 | `name` | The name of the schema, used to reference it in requests | Yes |
-| `description` | A description of the schema's purpose | No |
+| `description` | A description of the schema's purpose | Yes |
 | `schema` | The JSON Schema definition | Yes |
-| `system_prompt` | A system prompt to guide the model's response generation | No |
+
+## Schema Location
+
+Schemas are stored in the `test_config/schemas` directory. The server automatically loads all schema files from this directory when it starts.
+
+## Available Schemas
+
+The Fixed Schema MCP Server includes the following schemas:
+
+1. **Product Info** (`product_info.json`)
+   - For generating structured information about products
+   - Includes name, description, price, category, features, rating, and availability
+
+2. **Person Profile** (`person_profile.json`)
+   - For generating structured biographical information about people
+   - Includes name, age, occupation, skills, and contact information
+
+3. **API Endpoint Documentation** (`api_endpoint.json`)
+   - For generating structured API endpoint documentation
+   - Includes path, method, description, parameters, and responses
+
+4. **Troubleshooting Guide** (`troubleshooting_guide.json`)
+   - For generating structured technical troubleshooting guides
+   - Includes issue, symptoms, causes, step-by-step solutions, and prevention tips
+
+5. **Article Summary** (`article_summary.json`)
+   - For generating structured summaries of articles or topics
+   - Includes title, author, date, summary, key points, and conclusion
 
 ## JSON Schema Basics
 
@@ -94,27 +120,7 @@ For `array` types, you can define the type of items:
 }
 ```
 
-### Constraints
-
-You can add constraints to values:
-
-```json
-{
-  "type": "string",
-  "minLength": 1,
-  "maxLength": 100
-}
-```
-
-```json
-{
-  "type": "number",
-  "minimum": 0,
-  "maximum": 100
-}
-```
-
-## Examples of Common Schemas
+## Examples of Schema Files
 
 ### Product Information Schema
 
@@ -148,190 +154,94 @@ You can add constraints to values:
           "type": "string"
         },
         "description": "List of product features"
-      }
-    }
-  },
-  "system_prompt": "You are a product information assistant. Provide information about products in a structured format."
-}
-```
-
-### FAQ Schema
-
-```json
-{
-  "name": "faq",
-  "description": "Schema for FAQ responses",
-  "schema": {
-    "type": "object",
-    "required": ["question", "answer"],
-    "properties": {
-      "question": {
-        "type": "string",
-        "description": "The original question"
       },
-      "answer": {
-        "type": "string",
-        "description": "The answer to the question"
+      "rating": {
+        "type": "number",
+        "description": "The product rating (0-5)"
       },
-      "related_questions": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "description": "Related questions that might be of interest"
-      },
-      "sources": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "required": ["title", "url"],
-          "properties": {
-            "title": {
-              "type": "string",
-              "description": "The title of the source"
-            },
-            "url": {
-              "type": "string",
-              "description": "The URL of the source"
-            }
-          }
-        },
-        "description": "Sources of information"
-      }
-    }
-  },
-  "system_prompt": "You are a helpful assistant answering questions. Provide detailed answers with related questions and sources when available."
-}
-```
-
-### Code Explanation Schema
-
-```json
-{
-  "name": "code_explanation",
-  "description": "Schema for code explanation responses",
-  "schema": {
-    "type": "object",
-    "required": ["explanation", "key_concepts"],
-    "properties": {
-      "explanation": {
-        "type": "string",
-        "description": "A detailed explanation of the code"
-      },
-      "key_concepts": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "required": ["concept", "description"],
-          "properties": {
-            "concept": {
-              "type": "string",
-              "description": "The name of the concept"
-            },
-            "description": {
-              "type": "string",
-              "description": "A description of the concept"
-            }
-          }
-        },
-        "description": "Key concepts used in the code"
-      },
-      "potential_issues": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "description": "Potential issues or improvements for the code"
-      }
-    }
-  },
-  "system_prompt": "You are a code explanation assistant. Explain code snippets in a clear and structured way, highlighting key concepts and potential issues."
-}
-```
-
-## Schema Validation
-
-The Fixed Schema Response MCP Server validates responses against the specified schema. If a response doesn't conform to the schema, the server will attempt to fix it or return an error.
-
-### Validation Process
-
-1. The server receives a request with a specified schema
-2. The server generates a response using the model
-3. The server validates the response against the schema
-4. If the response is valid, it's returned to the client
-5. If the response is invalid, the server attempts to fix it
-6. If the response can't be fixed, an error is returned
-
-### Common Validation Errors
-
-| Error | Description | Solution |
-|-------|-------------|----------|
-| Missing required field | A required field is missing from the response | Ensure the system prompt clearly indicates all required fields |
-| Invalid type | A field has the wrong type | Specify the expected type in the system prompt |
-| Constraint violation | A field violates a constraint (e.g., minimum value) | Specify constraints in the system prompt |
-
-### Improving Validation Success
-
-To improve the chances of generating valid responses:
-
-1. Use clear and specific system prompts
-2. Include descriptions for each field in the schema
-3. Start with simpler schemas and gradually add complexity
-4. Test schemas with different queries to ensure they work as expected
-
-## Advanced Schema Features
-
-### Nested Objects
-
-You can define nested objects in your schema:
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "user": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "address": {
-          "type": "object",
-          "properties": {
-            "street": {
-              "type": "string"
-            },
-            "city": {
-              "type": "string"
-            }
-          }
-        }
+      "inStock": {
+        "type": "boolean",
+        "description": "Whether the product is in stock"
       }
     }
   }
 }
 ```
 
-### Enumerations
-
-You can restrict a field to a set of predefined values:
+### Person Profile Schema
 
 ```json
 {
-  "type": "string",
-  "enum": ["red", "green", "blue"]
+  "name": "person_profile",
+  "description": "Schema for person profile information",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "The person's name"
+      },
+      "age": {
+        "type": "integer",
+        "description": "The person's age"
+      },
+      "occupation": {
+        "type": "string",
+        "description": "The person's occupation"
+      },
+      "skills": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The person's skills"
+      },
+      "contact": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "The person's email address"
+          },
+          "phone": {
+            "type": "string",
+            "description": "The person's phone number"
+          }
+        },
+        "description": "The person's contact information"
+      }
+    },
+    "required": ["name"]
+  }
 }
 ```
 
-### Pattern Matching
+## Creating Custom Schemas
 
-You can use regular expressions to validate string formats:
+To create a custom schema:
 
-```json
-{
-  "type": "string",
-  "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
-}
+1. Create a new JSON file in the `test_config/schemas` directory
+2. Define the schema structure following the format above
+3. Update the `fastmcp_server.py` file to add a new tool function for your schema
+
+Example of adding a new tool function:
+
+```python
+@mcp.tool()
+def get_custom_schema(custom_param: str) -> Dict[str, Any]:
+    """
+    Get custom schema information.
+    
+    Args:
+        custom_param: Parameter for the custom schema
+    
+    Returns:
+        Custom schema information in a structured format
+    """
+    logger.info(f"Generating custom schema for: {custom_param}")
+    
+    prompt = f"Please provide information about {custom_param} in the custom schema format."
+    return invoke_claude(prompt, "custom_schema")
 ```
 
 ## Best Practices
@@ -339,5 +249,5 @@ You can use regular expressions to validate string formats:
 1. **Keep schemas simple**: Start with simple schemas and add complexity as needed
 2. **Use descriptive field names**: Choose field names that clearly indicate their purpose
 3. **Add descriptions**: Include descriptions for each field to guide the model
-4. **Test thoroughly**: Test schemas with various queries to ensure they work as expected
+4. **Test thoroughly**: Test schemas with the test_client.py script
 5. **Iterate and refine**: Refine schemas based on actual usage and feedback

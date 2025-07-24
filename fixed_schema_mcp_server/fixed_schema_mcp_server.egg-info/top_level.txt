@@ -1,1 +1,1 @@
-fixed_schema_mcp_server
+fastmcp_server

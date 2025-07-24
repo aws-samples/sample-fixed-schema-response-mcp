@@ -4,8 +4,11 @@ WORKDIR /app
 
 COPY . /app/
 
-RUN pip install --no-cache-dir -r requirements.txt || pip install --no-cache-dir jsonschema pydantic aiohttp
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir fastmcp boto3
 
-EXPOSE 8080
+# Make the run script executable
+RUN chmod +x run_fastmcp.sh
 
-CMD ["python", "http_server.py", "--host", "0.0.0.0", "--port", "8080"]
+# Run the FastMCP server
+CMD ["./run_fastmcp.sh"]

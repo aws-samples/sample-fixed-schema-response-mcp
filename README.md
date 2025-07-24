@@ -1,15 +1,15 @@
-# Fixed Schema Response MCP Server
+# Fixed Schema Response MCP Server (FastMCP Edition)
 
-A Model Context Protocol (MCP) server that processes user queries and returns responses in a fixed schema format (e.g., JSON). Similar to OpenAI's Structured Outputs feature, this MCP server constrains model responses to follow a predefined structure, making outputs more predictable and easier to parse programmatically.
+A Model Context Protocol (MCP) server that processes user queries and returns responses in a fixed schema format (e.g., JSON) using FastMCP. This server constrains model responses to follow a predefined structure, making outputs more predictable and easier to parse programmatically.
 
 ## Features
 
+- **FastMCP Integration**: Built on the FastMCP framework for simplified MCP server development
 - **Schema-Based Responses**: Define JSON schemas to structure AI-generated content
-- **Schema Validation**: Automatically validate responses against defined schemas
-- **Error Handling**: Properly formatted error responses that follow the schema
-- **Dynamic Configuration**: Update schemas and settings without server restart
+- **AWS Bedrock Integration**: Uses Claude 4 Sonnet for high-quality responses
+- **Fallback Mechanism**: Provides mock responses when AWS credentials are not available
 - **Kiro Integration**: Seamlessly works with Kiro as an MCP server
-- **Multiple Model Support**: Works with Amazon Bedrock (Claude) and OpenAI models
+- **Dynamic Schema Loading**: Automatically loads schemas from the test_config directory
 
 ## Installation
 
@@ -17,122 +17,29 @@ A Model Context Protocol (MCP) server that processes user queries and returns re
 
 - Python 3.8 or higher
 - pip (Python package manager)
-- AWS credentials configured (if using Amazon Bedrock)
+- AWS credentials configured (for AWS Bedrock integration)
+- FastMCP library
 
-### Install from PyPI
-
-```bash
-pip install fixed-schema-mcp-server
-```
-
-### Install from Source
+### Setup
 
 ```bash
+# Clone the repository
 git clone https://github.com/yourusername/fixed-schema-mcp-server.git
 cd fixed-schema-mcp-server
-pip install -e .
+
+# Create a virtual environment
+python -m venv fixed_schema_mcp_venv
+source fixed_schema_mcp_venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
 ## Quick Start
 
-### 1. Create a Configuration File
+### 1. Configure AWS Credentials (Optional)
 
-#### For Amazon Bedrock (Claude):
-
-```json
-{
-  "server": {
-    "host": "localhost",
-    "port": 8000,
-    "log_level": "info"
-  },
-  "model": {
-    "provider": "bedrock",
-    "model_id": "anthropic.claude-3-5-sonnet-20240620-v1:0",
-    "region": "us-east-1",
-    "parameters": {
-      "temperature": 0.7,
-      "top_p": 0.9,
-      "max_tokens": 1000
-    }
-  },
-  "schemas": {
-    "path": "./schemas",
-    "default_schema": "product_info"
-  }
-}
-```
-
-#### For OpenAI:
-
-```json
-{
-  "server": {
-    "host": "localhost",
-    "port": 8000,
-    "log_level": "info"
-  },
-  "model": {
-    "provider": "openai",
-    "model_name": "gpt-4",
-    "api_key": "YOUR_API_KEY",
-    "parameters": {
-      "temperature": 0.7,
-      "top_p": 1.0,
-      "max_tokens": 1000
-    }
-  },
-  "schemas": {
-    "path": "./schemas",
-    "default_schema": "product_info"
-  }
-}
-```
-
-### 2. Create a Schema
-
-Create a directory named `schemas` and add a schema file:
-
-```json
-{
-  "name": "product_info",
-  "description": "Schema for product information responses",
-  "schema": {
-    "type": "object",
-    "required": ["name", "description", "price", "category"],
-    "properties": {
-      "name": {
-        "type": "string",
-        "description": "The name of the product"
-      },
-      "description": {
-        "type": "string",
-        "description": "A detailed description of the product"
-      },
-      "price": {
-        "type": "number",
-        "description": "The price of the product in USD"
-      },
-      "category": {
-        "type": "string",
-        "description": "The category the product belongs to"
-      },
-      "features": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "description": "List of product features"
-      }
-    }
-  },
-  "system_prompt": "You are a product information assistant. Provide information about products in a structured format."
-}
-```
-
-### 3. Configure AWS Credentials (for Bedrock)
-
-If using Amazon Bedrock, ensure your AWS credentials are properly configured:
+If you want to use AWS Bedrock for generating responses, configure your AWS credentials:
 
 ```bash
 # Configure AWS CLI
@@ -145,158 +52,136 @@ You'll need to enter:
 - Default region (choose a region where Bedrock is available, like us-east-1 or us-west-2)
 - Default output format (json)
 
-Make sure your AWS account has access to Amazon Bedrock and the Claude model.
+If AWS credentials are not configured, the server will fall back to mock responses.
 
-### 4. Start the Server
+### 2. Schema Configuration
+
+The server automatically loads schemas from the `test_config/schemas` directory. The following schemas are included:
+
+- `product_info.json`: Schema for product information
+- `person_profile.json`: Schema for person profiles
+- `api_endpoint.json`: Schema for API endpoint documentation
+- `troubleshooting_guide.json`: Schema for troubleshooting guides
+- `article_summary.json`: Schema for article summaries
+
+You can modify these schemas or add new ones by creating JSON files in the `test_config/schemas` directory.
+
+### 3. Start the Server
+
+Run the provided script to start the FastMCP server:
 
 ```bash
-fixed-schema-mcp-server --config config.json
+./run_fastmcp.sh
 ```
 
-### 5. Configure Kiro
+### 4. Configure Kiro
 
-Add the following to your Kiro MCP configuration:
+The server is already configured for Kiro in `.kiro/settings/mcp.json`. The configuration includes:
 
 ```json
 {
   "mcpServers": {
     "fixed-schema": {
-      "command": "fixed-schema-mcp-server",
-      "args": ["--config", "config.json"],
+      "command": "/path/to/fixed_schema_mcp_server/run_fastmcp.sh",
+      "args": [],
       "env": {
-        "FIXED_SCHEMA_MCP_LOG_LEVEL": "INFO"
-      }
-    }
-  }
-}
-```
-
-## Troubleshooting MCP Server Connection
-
-If you encounter issues connecting the MCP server to Kiro, try these steps:
-
-### 1. Check Port Availability
-
-Make sure the port specified in your config.json is available:
-
-```bash
-# Check if port 8000 is in use
-lsof -i :8000
-```
-
-If the port is in use, change it in your config.json.
-
-### 2. Use Absolute Paths
-
-Use absolute paths in your configuration to avoid path resolution issues:
-
-```json
-{
-  "schemas": {
-    "path": "/absolute/path/to/schemas",
-    "default_schema": "product_info"
-  }
-}
-```
-
-### 3. Check Dependencies
-
-Ensure all required dependencies are installed:
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Use a Virtual Environment
-
-Create a dedicated virtual environment for the MCP server:
-
-```bash
-python -m venv fixed_schema_mcp_venv
-source fixed_schema_mcp_venv/bin/activate
-pip install -e .
-```
-
-### 5. Create a Wrapper Script
-
-If you're having issues with the MCP protocol, create a wrapper script:
-
-```bash
-#!/bin/bash
-# run_mcp.sh
-
-# Get the directory of this script
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-# Set up the virtual environment path
-VENV_PATH="${SCRIPT_DIR}/../fixed_schema_mcp_venv"
-
-# Activate the virtual environment
-source "$VENV_PATH/bin/activate"
-
-# Run the server
-python "$SCRIPT_DIR/run_server.py" "$@"
-```
-
-Then update your Kiro configuration:
-
-```json
-{
-  "mcpServers": {
-    "fixed-schema": {
-      "command": "/path/to/run_mcp.sh",
-      "args": [
-        "--config",
-        "/path/to/config.json",
-        "--log-level",
-        "INFO"
+        "FASTMCP_LOG_LEVEL": "DEBUG"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "get_product_info",
+        "get_article_summary",
+        "get_person_profile",
+        "get_api_endpoint",
+        "get_troubleshooting_guide"
       ]
     }
   }
 }
 ```
 
-### 6. Check Logs
+## Using the MCP Tools
 
-Enable detailed logging to troubleshoot connection issues:
+The server provides the following MCP tools that can be used in Kiro:
 
-```bash
-fixed-schema-mcp-server --config config.json --log-level DEBUG
+1. `get_product_info`: Get detailed information about a product
+2. `get_person_profile`: Get profile information about a person
+3. `get_api_endpoint`: Get documentation for an API endpoint
+4. `get_troubleshooting_guide`: Get a troubleshooting guide for a technical issue
+5. `get_article_summary`: Get a summary of an article or topic
+
+### Example Usage in Kiro
+
+```
+@fixed-schema get_product_info product_name: "iPhone 15 Pro"
+@fixed-schema get_person_profile person_name: "Elon Musk"
+@fixed-schema get_api_endpoint endpoint_name: "user authentication"
+@fixed-schema get_troubleshooting_guide issue: "computer won't start"
+@fixed-schema get_article_summary topic: "artificial intelligence"
 ```
 
-## Testing
+## Troubleshooting
 
-You can test the server using the included test client:
+### AWS Credentials
+
+If you're not seeing responses from AWS Bedrock:
+
+1. Check that your AWS credentials are properly configured:
+   ```bash
+   aws sts get-caller-identity
+   ```
+
+2. Verify that your AWS account has access to Amazon Bedrock and the Claude model.
+
+3. If you don't have AWS credentials, the server will automatically fall back to mock responses.
+
+### Dependencies
+
+If you encounter issues with missing dependencies:
 
 ```bash
-# Test with the product_info schema
-python test_client.py "Tell me about the latest iPhone" --schema product_info
+# Activate the virtual environment
+source fixed_schema_mcp_venv/bin/activate
 
-# Test with another schema
-python test_client.py "Summarize the latest news about AI advancements" --schema article_summary
+# Install dependencies
+pip install fastmcp boto3
 ```
 
-## Documentation
+### Kiro Integration
 
-For more detailed information, check out:
+If Kiro is not connecting to the MCP server:
 
-- [Installation Guide](fixed_schema_mcp_server/docs/installation/README.md)
-- [Schema Documentation](fixed_schema_mcp_server/docs/schema/README.md)
-- [API Reference](fixed_schema_mcp_server/docs/api/README.md)
-- [Troubleshooting](fixed_schema_mcp_server/docs/troubleshooting/README.md)
-- [Performance Tuning](fixed_schema_mcp_server/docs/performance/README.md)
+1. Check that the path in the Kiro MCP configuration is correct
+2. Ensure the run_fastmcp.sh script has execute permissions:
+   ```bash
+   chmod +x run_fastmcp.sh
+   ```
+3. Try running the server manually to check for errors:
+   ```bash
+   ./run_fastmcp.sh
+   ```
+
+## How It Works
+
+The FastMCP server works by:
+
+1. Loading schemas from the `test_config/schemas` directory
+2. Registering MCP tools for each schema type
+3. When a tool is invoked, it:
+   - Constructs a prompt for AWS Bedrock Claude 4 Sonnet
+   - Sends the prompt to Claude with the appropriate schema
+   - Parses and validates the response against the schema
+   - Returns the structured data to Kiro
+
+If AWS Bedrock is not available, it falls back to generating mock responses that match the schema structure.
 
 ## Use Cases
 
-- **API Development**: Generate structured data for API responses
-- **Data Extraction**: Extract specific information from unstructured text
-- **Form Filling**: Generate structured data for form submissions
-- **Content Generation**: Create structured content for websites or applications
-- **Data Transformation**: Convert between different data formats
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+- **Product Information**: Get structured information about products
+- **Person Profiles**: Generate structured profiles for individuals
+- **API Documentation**: Create structured API endpoint documentation
+- **Troubleshooting**: Generate step-by-step troubleshooting guides
+- **Article Summaries**: Create structured summaries of articles or topics
 
 ## License
 

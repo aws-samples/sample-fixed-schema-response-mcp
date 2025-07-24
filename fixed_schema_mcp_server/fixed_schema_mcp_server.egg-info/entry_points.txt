@@ -1,2 +1,0 @@
-[console_scripts]
-fixed-schema-mcp-server = fixed_schema_mcp_server.main:main

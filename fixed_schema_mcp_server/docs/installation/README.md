@@ -1,23 +1,23 @@
-# Installation and Setup Guide
+# Installation and Setup Guide for FastMCP Edition
 
 ## Installation
 
 ### Prerequisites
 
-Before installing the Fixed Schema Response MCP Server, ensure you have the following prerequisites:
+Before installing the Fixed Schema Response MCP Server (FastMCP Edition), ensure you have the following prerequisites:
 
 - Python 3.8 or higher
 - pip (Python package manager)
 - Git (optional, for cloning the repository)
+- AWS credentials (optional, for AWS Bedrock integration)
+- FastMCP library
 
 ### Installation Methods
 
-#### Method 1: Install from PyPI
-
-The simplest way to install the Fixed Schema Response MCP Server is via pip:
+#### Method 1: Install Dependencies
 
 ```bash
-pip install fixed-schema-mcp-server
+pip install fastmcp boto3 jsonschema
 ```
 
 #### Method 2: Install from Source
@@ -35,181 +35,85 @@ To install from source:
    pip install -e .
    ```
 
-## Configuration
+## AWS Credentials Configuration (Optional)
 
-### Basic Configuration
-
-The Fixed Schema Response MCP Server uses a JSON configuration file. Create a file named `config.json` with the following structure:
-
-```json
-{
-  "server": {
-    "host": "localhost",
-    "port": 8000,
-    "log_level": "info"
-  },
-  "model": {
-    "provider": "openai",
-    "model_name": "gpt-4",
-    "api_key": "YOUR_API_KEY",
-    "parameters": {
-      "temperature": 0.7,
-      "top_p": 1.0,
-      "max_tokens": 1000
-    }
-  },
-  "schemas": {
-    "path": "./schemas",
-    "default_schema": "default"
-  }
-}
-```
-
-### Configuration Options
-
-#### Server Configuration
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `host` | The host address to bind the server | `localhost` |
-| `port` | The port to listen on | `8000` |
-| `log_level` | Logging level (`debug`, `info`, `warning`, `error`) | `info` |
-
-#### Model Configuration
-
-| Option | Description | Required |
-|--------|-------------|----------|
-| `provider` | The model provider (e.g., `openai`, `anthropic`) | Yes |
-| `model_name` | The name of the model to use | Yes |
-| `api_key` | API key for the model provider | Yes |
-| `parameters` | Default parameters for model requests | No |
-
-#### Schema Configuration
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `path` | Path to the directory containing schema files | `./schemas` |
-| `default_schema` | The default schema to use if none is specified | `default` |
-
-### Environment Variables
-
-You can also configure the server using environment variables:
-
-- `FIXED_SCHEMA_MCP_CONFIG_PATH`: Path to the configuration file
-- `FIXED_SCHEMA_MCP_MODEL_API_KEY`: API key for the model provider
-- `FIXED_SCHEMA_MCP_LOG_LEVEL`: Logging level
-
-## Quickstart Tutorial
-
-### 1. Install the Server
+If you want to use AWS Bedrock for generating responses, configure your AWS credentials:
 
 ```bash
-pip install fixed-schema-mcp-server
+# Configure AWS CLI
+aws configure
 ```
 
-### 2. Create a Configuration File
+You'll need to enter:
+- AWS Access Key ID
+- AWS Secret Access Key
+- Default region (choose a region where Bedrock is available, like us-east-1 or us-west-2)
+- Default output format (json)
 
-Create a file named `config.json`:
+If AWS credentials are not configured, the server will fall back to mock responses.
 
-```json
-{
-  "server": {
-    "host": "localhost",
-    "port": 8000,
-    "log_level": "info"
-  },
-  "model": {
-    "provider": "openai",
-    "model_name": "gpt-4",
-    "api_key": "YOUR_API_KEY"
-  },
-  "schemas": {
-    "path": "./schemas",
-    "default_schema": "product_info"
-  }
-}
-```
+## Schema Configuration
 
-### 3. Create a Schema
+The server automatically loads schemas from the `test_config/schemas` directory. The following schemas are included:
 
-Create a directory named `schemas` and add a file named `product_info.json`:
+- `product_info.json`: Schema for product information
+- `person_profile.json`: Schema for person profiles
+- `api_endpoint.json`: Schema for API endpoint documentation
+- `troubleshooting_guide.json`: Schema for troubleshooting guides
+- `article_summary.json`: Schema for article summaries
 
-```json
-{
-  "name": "product_info",
-  "description": "Schema for product information responses",
-  "schema": {
-    "type": "object",
-    "required": ["name", "description", "price", "category"],
-    "properties": {
-      "name": {
-        "type": "string",
-        "description": "The name of the product"
-      },
-      "description": {
-        "type": "string",
-        "description": "A detailed description of the product"
-      },
-      "price": {
-        "type": "number",
-        "description": "The price of the product in USD"
-      },
-      "category": {
-        "type": "string",
-        "description": "The category the product belongs to"
-      },
-      "features": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        },
-        "description": "List of product features"
-      }
-    }
-  },
-  "system_prompt": "You are a product information assistant. Provide information about products in a structured format."
-}
-```
+You can modify these schemas or add new ones by creating JSON files in the `test_config/schemas` directory.
 
-### 4. Start the Server
+## Running the Server
+
+Run the provided script to start the FastMCP server:
 
 ```bash
-fixed-schema-mcp-server --config config.json
+./run_fastmcp.sh
 ```
 
-### 5. Configure Kiro to Use the Server
+## Kiro Integration
 
-Add the following to your Kiro MCP configuration:
+The server is already configured for Kiro in `.kiro/settings/mcp.json`. The configuration includes:
 
 ```json
 {
   "mcpServers": {
     "fixed-schema": {
-      "command": "fixed-schema-mcp-server",
-      "args": ["--config", "config.json"],
+      "command": "/path/to/fixed_schema_mcp_server/run_fastmcp.sh",
+      "args": [],
       "env": {
-        "FIXED_SCHEMA_MCP_LOG_LEVEL": "INFO"
-      }
+        "FASTMCP_LOG_LEVEL": "DEBUG"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "get_product_info",
+        "get_article_summary",
+        "get_person_profile",
+        "get_api_endpoint",
+        "get_troubleshooting_guide"
+      ]
     }
   }
 }
 ```
 
-### 6. Test the Server
+Make sure to update the `command` path to the absolute path of your `run_fastmcp.sh` script.
 
-Send a request to the server:
+## Testing the Server
 
-```json
-{
-  "query": "Tell me about the latest iPhone",
-  "schema": "product_info"
-}
+You can test the server using the included test client:
+
+```bash
+python test_client.py --product "iPhone 15 Pro"
+python test_client.py --person "Elon Musk"
+python test_client.py --api "user authentication"
+python test_client.py --troubleshoot "computer won't start"
+python test_client.py --article "artificial intelligence"
 ```
-
-You should receive a structured response following the product_info schema.
 
 ## Next Steps
 
 - Learn more about [schema definitions](../schema/README.md)
-- Explore the [API documentation](../api/README.md)
+- Explore the [Kiro integration guide](../kiro_integration.md)
 - Check out the [troubleshooting guide](../troubleshooting/README.md) if you encounter issues

@@ -1,4 +1,4 @@
-# Troubleshooting Guide
+# Troubleshooting Guide for FastMCP Edition
 
 ## Common Issues and Solutions
 
@@ -22,9 +22,9 @@
    ```
    The Fixed Schema Response MCP Server requires Python 3.8 or higher.
 
-3. Install with verbose output to identify specific issues:
+3. Install dependencies manually:
    ```bash
-   pip install fixed-schema-mcp-server -v
+   pip install fastmcp boto3 jsonschema
    ```
 
 #### Issue: Missing Dependencies
@@ -34,86 +34,89 @@
 - ModuleNotFoundError exceptions
 
 **Solutions:**
-1. Reinstall with all dependencies:
+1. Install required dependencies:
    ```bash
-   pip install fixed-schema-mcp-server[all]
+   pip install fastmcp boto3 jsonschema
    ```
 
-2. Install specific missing dependencies:
+2. Check if FastMCP is installed correctly:
    ```bash
-   pip install jsonschema pydantic fastapi uvicorn
+   python -c "import mcp.server.fastmcp; print('FastMCP installed')"
    ```
 
-### Configuration Issues
+### AWS Credentials Issues
 
-#### Issue: Configuration File Not Found
+#### Issue: AWS Credentials Not Found
 
 **Symptoms:**
-- Error message: "Configuration file not found"
-- Server fails to start
+- Warning message: "AWS credentials not found in environment variables"
+- Server falls back to mock responses
 
 **Solutions:**
-1. Verify the path to the configuration file:
+1. Configure AWS credentials:
    ```bash
-   fixed-schema-mcp-server --config /absolute/path/to/config.json
+   aws configure
    ```
 
-2. Create a default configuration file:
+2. Check if AWS credentials are configured correctly:
    ```bash
-   fixed-schema-mcp-server --create-config
+   aws sts get-caller-identity
    ```
 
-#### Issue: Invalid Configuration Format
+3. Set AWS credentials as environment variables:
+   ```bash
+   export AWS_ACCESS_KEY_ID=your_access_key
+   export AWS_SECRET_ACCESS_KEY=your_secret_key
+   export AWS_DEFAULT_REGION=us-east-1
+   ```
+
+#### Issue: AWS Bedrock Access Denied
 
 **Symptoms:**
-- Error message: "Invalid configuration format"
-- JSON parsing errors
+- Error message: "AccessDeniedException" when invoking Bedrock
+- Server falls back to mock responses
 
 **Solutions:**
-1. Validate your JSON configuration:
+1. Verify that your AWS account has access to Amazon Bedrock:
+   - Check the AWS console to ensure Bedrock is enabled for your account
+   - Verify that you have the necessary IAM permissions
+
+2. Check if the Claude model is available in your region:
    ```bash
-   python -c "import json; json.load(open('config.json'))"
+   aws bedrock list-foundation-models --region us-east-1
    ```
 
-2. Check for common JSON syntax errors:
-   - Missing commas between items
-   - Trailing commas (not allowed in JSON)
-   - Unquoted keys
-   - Single quotes instead of double quotes
+3. If you don't have AWS Bedrock access, the server will automatically fall back to mock responses.
 
 ### Schema Issues
 
 #### Issue: Schema File Not Found
 
 **Symptoms:**
-- Error message: "Schema file not found"
-- Schema validation failures
+- Warning message: "Schemas directory not found"
+- Server uses default schemas
 
 **Solutions:**
-1. Verify the schema directory path in your configuration:
-   ```json
-   {
-     "schemas": {
-       "path": "./schemas"
-     }
-   }
+1. Verify the schemas directory exists:
+   ```bash
+   ls -la fixed_schema_mcp_server/test_config/schemas
    ```
 
-2. Ensure schema files exist in the specified directory:
+2. Ensure schema files have the correct format:
    ```bash
-   ls -la ./schemas
+   python -c "import json; json.load(open('fixed_schema_mcp_server/test_config/schemas/product_info.json'))"
    ```
 
 #### Issue: Invalid Schema Format
 
 **Symptoms:**
-- Error message: "Invalid schema format"
+- Error message: "Failed to load schema"
 - Schema validation failures
 
 **Solutions:**
 1. Validate your schema JSON:
    ```bash
-   python -c "import json; json.load(open('schemas/my_schema.json'))"
+   python -c "import json; json.load(open('fixed_schema_mcp_server/test_config/schemas/my_schema.json'))"
    ```
 
 2. Verify schema structure against the required format:
@@ -128,143 +131,95 @@
    }
    ```
 
-### Model API Issues
+### Kiro Integration Issues
 
-#### Issue: API Key Not Found
+#### Issue: Kiro Can't Connect to the Server
 
 **Symptoms:**
-- Error message: "API key not found" or "Invalid API key"
-- Authentication failures with the model provider
+- Error message in Kiro: "Failed to connect to MCP server"
+- No response from the server
 
 **Solutions:**
-1. Set the API key in your configuration:
-   ```json
-   {
-     "model": {
-       "provider": "openai",
-       "api_key": "YOUR_API_KEY"
-     }
-   }
-   ```
-
-2. Set the API key as an environment variable:
+1. Check that the run_fastmcp.sh script has execute permissions:
    ```bash
-   export FIXED_SCHEMA_MCP_MODEL_API_KEY=your_api_key
+   chmod +x fixed_schema_mcp_server/run_fastmcp.sh
    ```
 
-#### Issue: Rate Limit Exceeded
-
-**Symptoms:**
-- Error message: "Rate limit exceeded"
-- Requests failing after a certain number
-
-**Solutions:**
-1. Implement request throttling in your application
-2. Increase the rate limit with your model provider (if possible)
-3. Configure the server to use connection pooling:
+2. Verify that the path in the Kiro MCP configuration is correct:
    ```json
    {
-     "model": {
-       "connection_pool": {
-         "max_connections": 5,
-         "timeout": 60
+     "mcpServers": {
+       "fixed-schema": {
+         "command": "/absolute/path/to/fixed_schema_mcp_server/run_fastmcp.sh"
        }
      }
    }
    ```
 
-### Response Validation Issues
-
-#### Issue: Schema Validation Failures
-
-**Symptoms:**
-- Error message: "Schema validation failed"
-- Missing or invalid fields in responses
-
-**Solutions:**
-1. Check the schema requirements:
+3. Try running the server manually to check for errors:
    ```bash
-   fixed-schema-mcp-server --validate-schema schemas/my_schema.json
+   ./fixed_schema_mcp_server/run_fastmcp.sh
    ```
 
-2. Improve the system prompt to guide the model:
-   ```json
-   {
-     "system_prompt": "You MUST follow this exact format in your response..."
-   }
-   ```
-
-3. Simplify the schema requirements if they're too complex
-
-#### Issue: Inconsistent Response Format
+#### Issue: Tool Not Found in Kiro
 
 **Symptoms:**
-- Sometimes responses are valid, sometimes not
-- Unpredictable response structure
+- Error message in Kiro: "Tool not found"
+- No response from the server
 
 **Solutions:**
-1. Lower the temperature parameter for more consistent outputs:
+1. Verify that the tool name is correct:
+   ```
+   @fixed-schema get_product_info product_name: "iPhone"
+   ```
+
+2. Check that the tool is registered in the fastmcp_server.py file:
+   ```python
+   @mcp.tool()
+   def get_product_info(product_name: str) -> Dict[str, Any]:
+       # ...
+   ```
+
+3. Make sure the tool is included in the autoApprove list in the Kiro MCP configuration:
    ```json
    {
-     "parameters": {
-       "temperature": 0.2
-     }
-   }
-   ```
-
-2. Use a more deterministic model if available
-3. Add more examples in the system prompt
-
-### Server Issues
-
-#### Issue: Server Won't Start
-
-**Symptoms:**
-- Error messages during startup
-- Process exits immediately
-
-**Solutions:**
-1. Check for port conflicts:
-   ```bash
-   lsof -i :8000
-   ```
-
-2. Run with debug logging:
-   ```bash
-   fixed-schema-mcp-server --log-level debug
-   ```
-
-3. Check system resources (memory, disk space)
-
-#### Issue: Server Crashes Under Load
-
-**Symptoms:**
-- Server crashes when handling multiple requests
-- Memory usage increases over time
-
-**Solutions:**
-1. Configure request queuing:
-   ```json
-   {
-     "server": {
-       "max_concurrent_requests": 5,
-       "queue_size": 100
-     }
-   }
-   ```
-
-2. Implement connection pooling:
-   ```json
-   {
-     "model": {
-       "connection_pool": {
-         "max_connections": 10
+     "mcpServers": {
+       "fixed-schema": {
+         "autoApprove": [
+           "get_product_info",
+           "get_article_summary",
+           "get_person_profile",
+           "get_api_endpoint",
+           "get_troubleshooting_guide"
+         ]
        }
      }
    }
    ```
 
-3. Increase server resources if possible
+### Response Issues
+
+#### Issue: Mock Responses Instead of Real Responses
+
+**Symptoms:**
+- Generic responses that don't match the query
+- Warning message: "AWS Bedrock client not available, using mock response"
+
+**Solutions:**
+1. Configure AWS credentials as described above
+2. Verify that your AWS account has access to Amazon Bedrock
+3. Check if the Claude model is available in your region
+
+#### Issue: Response Format Issues
+
+**Symptoms:**
+- Error message: "Failed to parse Claude response as JSON"
+- Incomplete or malformed responses
+
+**Solutions:**
+1. Check the schema definition to ensure it's not too complex
+2. Simplify the schema if necessary
+3. The server will automatically fall back to mock responses if parsing fails
 
 ## Debugging Tips
 
@@ -273,77 +228,50 @@
 Set the log level to debug for more detailed information:
 
 ```bash
-fixed-schema-mcp-server --log-level debug
+FASTMCP_LOG_LEVEL=DEBUG ./fixed_schema_mcp_server/run_fastmcp.sh
 ```
 
-Or in the configuration:
+Or in the Kiro MCP configuration:
 
 ```json
 {
-  "server": {
-    "log_level": "debug"
-  }
-}
-```
-
-### Validate Configuration and Schemas
-
-Use the built-in validation tools:
-
-```bash
-# Validate configuration
-fixed-schema-mcp-server --validate-config config.json
-
-# Validate schema
-fixed-schema-mcp-server --validate-schema schemas/my_schema.json
-```
-
-### Test Individual Components
-
-Test the schema validation independently:
-
-```bash
-fixed-schema-mcp-server --test-schema schemas/my_schema.json --test-data test_data.json
-```
-
-Test the model connection:
-
-```bash
-fixed-schema-mcp-server --test-model
-```
-
-### Monitor Server Metrics
-
-Enable metrics collection:
-
-```json
-{
-  "server": {
-    "metrics": {
-      "enabled": true,
-      "port": 9090
+  "mcpServers": {
+    "fixed-schema": {
+      "env": {
+        "FASTMCP_LOG_LEVEL": "DEBUG"
+      }
     }
   }
 }
 ```
 
-Access metrics at `http://localhost:9090/metrics`
+### Test the Server Manually
 
-### Use the Debug Endpoint
-
-The server provides a debug endpoint for troubleshooting:
+Use the test_client.py script to test the server:
 
 ```bash
-curl http://localhost:8000/debug/status
+python fixed_schema_mcp_server/test_client.py --product "iPhone 15 Pro"
+python fixed_schema_mcp_server/test_client.py --person "Elon Musk"
+python fixed_schema_mcp_server/test_client.py --api "user authentication"
+python fixed_schema_mcp_server/test_client.py --troubleshoot "computer won't start"
+python fixed_schema_mcp_server/test_client.py --article "artificial intelligence"
+```
+
+### Test Schema Loading
+
+Use the test_schemas.py script to test schema loading:
+
+```bash
+python fixed_schema_mcp_server/test_schemas.py fixed_schema_mcp_server/test_config/schemas
 ```
 
 ## Frequently Asked Questions (FAQ)
 
 ### General Questions
 
-#### Q: What is the Fixed Schema Response MCP Server?
+#### Q: What is the Fixed Schema Response MCP Server (FastMCP Edition)?
 
-A: The Fixed Schema Response MCP Server is a Model Context Protocol (MCP) server that processes user queries and returns responses in a predefined structured format (e.g., JSON). It ensures that all responses follow a consistent structure, making them predictable and easily consumable by applications.
+A: The Fixed Schema Response MCP Server (FastMCP Edition) is a Model Context Protocol (MCP) server built on the FastMCP framework that processes user queries and returns responses in a predefined structured format (e.g., JSON). It uses AWS Bedrock Claude 4 Sonnet to generate high-quality responses.
 
 #### Q: How does it differ from regular language model APIs?
 
@@ -355,117 +283,34 @@ A: Unlike regular language model APIs that return free-form text, the Fixed Sche
 
 A: The server requires Python 3.8 or higher and works on Linux, macOS, and Windows.
 
-#### Q: Can I run the server in a Docker container?
+#### Q: Do I need AWS credentials?
 
-A: Yes, a Docker image is available:
-
-```bash
-docker pull fixed-schema-mcp-server
-docker run -p 8000:8000 -v ./config.json:/app/config.json fixed-schema-mcp-server
-```
+A: AWS credentials are optional. If you have AWS credentials and access to Amazon Bedrock, the server will use Claude 4 Sonnet to generate responses. If not, it will fall back to mock responses.
 
 #### Q: How do I update to the latest version?
 
-A: Use pip to update:
+A: Since this is a custom implementation, you can update by pulling the latest code from the repository:
 
 ```bash
-pip install --upgrade fixed-schema-mcp-server
+git pull
 ```
 
 ### Configuration
 
-#### Q: Can I use multiple model providers?
+#### Q: Can I customize the schemas?
 
-A: Yes, you can configure multiple model providers and specify which one to use for each request:
+A: Yes, you can modify the existing schemas or add new ones by creating JSON files in the `test_config/schemas` directory and updating the `fastmcp_server.py` file to add new tool functions.
 
-```json
-{
-  "model": {
-    "providers": {
-      "openai": {
-        "api_key": "YOUR_OPENAI_API_KEY",
-        "model_name": "gpt-4"
-      },
-      "anthropic": {
-        "api_key": "YOUR_ANTHROPIC_API_KEY",
-        "model_name": "claude-2"
-      }
-    },
-    "default_provider": "openai"
-  }
-}
-```
+#### Q: Can I use a different model?
 
-#### Q: How do I configure rate limiting?
-
-A: Add rate limiting configuration:
-
-```json
-{
-  "server": {
-    "rate_limit": {
-      "requests_per_minute": 60,
-      "requests_per_day": 1000
-    }
-  }
-}
-```
-
-### Schemas
-
-#### Q: How many schemas can I define?
-
-A: There's no hard limit on the number of schemas you can define. However, for performance reasons, it's recommended to keep the number of schemas reasonable (under 100).
-
-#### Q: Can schemas reference each other?
-
-A: Yes, you can use JSON Schema's `$ref` keyword to reference other schemas:
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "user": {
-      "$ref": "user.json"
-    }
-  }
-}
-```
-
-#### Q: How complex can schemas be?
-
-A: Schemas can be as complex as needed, but very complex schemas may result in lower validation success rates. It's recommended to start with simpler schemas and gradually add complexity as needed.
+A: The server is currently configured to use AWS Bedrock Claude 4 Sonnet. If you want to use a different model, you'll need to modify the `fastmcp_server.py` file.
 
 ### Performance
 
 #### Q: How many requests per second can the server handle?
 
-A: The performance depends on various factors including hardware, model provider, and schema complexity. With default settings on moderate hardware, the server can typically handle 5-10 requests per second.
+A: The performance depends on various factors including hardware, AWS Bedrock availability, and schema complexity. With default settings on moderate hardware, the server can typically handle 5-10 requests per second.
 
-#### Q: How can I improve performance?
+#### Q: Is there any rate limiting?
 
-A: See the [Performance Tuning Guide](../performance/README.md) for detailed recommendations.
-
-### Troubleshooting
-
-#### Q: Where can I find the server logs?
-
-A: By default, logs are written to stdout/stderr. You can redirect them to a file:
-
-```bash
-fixed-schema-mcp-server > server.log 2>&1
-```
-
-Or configure logging in the configuration file:
-
-```json
-{
-  "server": {
-    "log_file": "/path/to/server.log"
-  }
-}
-```
-
-#### Q: How do I report bugs or request features?
-
-A: Please submit issues on our GitHub repository: [https://github.com/yourusername/fixed-schema-mcp-server/issues](https://github.com/yourusername/fixed-schema-mcp-server/issues)
+A: The server doesn't implement rate limiting itself, but AWS Bedrock has its own rate limits. If you exceed these limits, the server will fall back to mock responses.

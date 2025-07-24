@@ -1,387 +1,237 @@
-# API Documentation
+# FastMCP API Documentation
 
 ## Introduction
 
-The Fixed Schema Response MCP Server provides a simple API for generating structured responses from language models. This document describes the API endpoints, request/response formats, and error handling.
+The Fixed Schema Response MCP Server (FastMCP Edition) provides a set of tools for generating structured responses using AWS Bedrock Claude 4 Sonnet. This document describes the available tools, their parameters, and response formats.
 
-## API Endpoints
+## MCP Tools
 
-### Generate Response
+The server provides the following MCP tools that can be used in Kiro:
 
-Generates a structured response based on a user query and a specified schema.
+### 1. get_product_info
 
-- **Endpoint**: `/generate`
-- **Method**: `POST`
-- **Content-Type**: `application/json`
+Get detailed information about a product.
 
-#### Request Format
+#### Parameters
 
-```json
-{
-  "query": "string",
-  "schema": "string",
-  "parameters": {
-    "temperature": number,
-    "top_p": number,
-    "max_tokens": number
-  }
-}
-```
-
-| Field | Type | Description | Required |
-|-------|------|-------------|----------|
-| `query` | string | The user query to process | Yes |
-| `schema` | string | The name of the schema to use | Yes |
-| `parameters` | object | Model parameters to override defaults | No |
+| Parameter | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `product_name` | string | Name of the product to get information about | Yes |
 
 #### Response Format
 
 ```json
 {
-  "status": "success",
-  "data": {
-    // Schema-specific response data
-  },
-  "metadata": {
-    "model": "string",
-    "processing_time": number
-  }
+  "name": "string",
+  "description": "string",
+  "price": number,
+  "category": "string",
+  "features": ["string"],
+  "rating": number,
+  "inStock": boolean
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `status` | string | The status of the request (`success` or `error`) |
-| `data` | object | The structured response data (format depends on the schema) |
-| `metadata` | object | Metadata about the response |
+#### Example Usage
 
-#### Error Response
-
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "string",
-    "message": "string",
-    "details": {
-      // Error-specific details
-    }
-  },
-  "metadata": {
-    "model": "string",
-    "processing_time": number
-  }
-}
+```
+@fixed-schema get_product_info product_name: "iPhone 15 Pro"
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `status` | string | Always `error` for error responses |
-| `error` | object | Error information |
-| `error.code` | string | Error code |
-| `error.message` | string | Human-readable error message |
-| `error.details` | object | Additional error details |
-| `metadata` | object | Metadata about the response |
+### 2. get_person_profile
 
-### List Schemas
+Get profile information about a person.
 
-Lists all available schemas.
+#### Parameters
 
-- **Endpoint**: `/schemas`
-- **Method**: `GET`
+| Parameter | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `person_name` | string | Name of the person to get profile for | Yes |
 
 #### Response Format
 
 ```json
 {
-  "status": "success",
-  "data": {
-    "schemas": [
-      {
-        "name": "string",
-        "description": "string"
-      }
-    ]
+  "name": "string",
+  "age": number,
+  "occupation": "string",
+  "skills": ["string"],
+  "contact": {
+    "email": "string",
+    "phone": "string"
   }
 }
 ```
 
-### Get Schema
+#### Example Usage
 
-Gets details about a specific schema.
+```
+@fixed-schema get_person_profile person_name: "Elon Musk"
+```
 
-- **Endpoint**: `/schemas/{schema_name}`
-- **Method**: `GET`
+### 3. get_api_endpoint
+
+Get documentation for an API endpoint.
+
+#### Parameters
+
+| Parameter | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `endpoint_name` | string | Name of the API endpoint to get documentation for | Yes |
 
 #### Response Format
 
 ```json
 {
-  "status": "success",
-  "data": {
-    "name": "string",
-    "description": "string",
-    "schema": {
-      // JSON Schema definition
+  "path": "string",
+  "method": "string",
+  "description": "string",
+  "parameters": [
+    {
+      "name": "string",
+      "type": "string",
+      "required": boolean,
+      "description": "string"
     }
-  }
+  ],
+  "responses": [
+    {
+      "code": number,
+      "description": "string",
+      "example": object
+    }
+  ]
 }
 ```
 
-### Server Status
+#### Example Usage
 
-Gets the current status of the server.
+```
+@fixed-schema get_api_endpoint endpoint_name: "user authentication"
+```
 
-- **Endpoint**: `/status`
-- **Method**: `GET`
+### 4. get_troubleshooting_guide
+
+Get a troubleshooting guide for a technical issue.
+
+#### Parameters
+
+| Parameter | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `issue` | string | Description of the technical issue to troubleshoot | Yes |
 
 #### Response Format
 
 ```json
 {
-  "status": "success",
-  "data": {
-    "server_status": "string",
-    "uptime": number,
-    "model_status": "string",
-    "request_count": number
-  }
-}
-```
-
-## Request/Response Examples
-
-### Example 1: Product Information
-
-#### Request
-
-```json
-{
-  "query": "Tell me about the latest iPhone",
-  "schema": "product_info",
-  "parameters": {
-    "temperature": 0.5
-  }
-}
-```
-
-#### Response
-
-```json
-{
-  "status": "success",
-  "data": {
-    "name": "iPhone 15 Pro",
-    "description": "The latest flagship smartphone from Apple featuring a powerful A17 Pro chip, advanced camera system, and titanium design.",
-    "price": 999.99,
-    "category": "Smartphones",
-    "features": [
-      "A17 Pro chip",
-      "48MP camera system",
-      "Titanium design",
-      "Action button",
-      "USB-C connector"
-    ]
-  },
-  "metadata": {
-    "model": "gpt-4",
-    "processing_time": 1.25
-  }
-}
-```
-
-### Example 2: FAQ Response
-
-#### Request
-
-```json
-{
-  "query": "How do I reset my password?",
-  "schema": "faq"
-}
-```
-
-#### Response
-
-```json
-{
-  "status": "success",
-  "data": {
-    "question": "How do I reset my password?",
-    "answer": "To reset your password, click on the 'Forgot Password' link on the login page. Enter your email address, and we'll send you a password reset link. Click the link in the email and follow the instructions to create a new password.",
-    "related_questions": [
-      "How do I change my password?",
-      "What should I do if I don't receive the password reset email?",
-      "How can I create a strong password?"
-    ],
-    "sources": [
-      {
-        "title": "Password Reset Guide",
-        "url": "https://example.com/help/password-reset"
-      }
-    ]
-  },
-  "metadata": {
-    "model": "gpt-4",
-    "processing_time": 0.87
-  }
-}
-```
-
-### Example 3: Error Response
-
-#### Request
-
-```json
-{
-  "query": "Tell me about the latest iPhone",
-  "schema": "nonexistent_schema"
-}
-```
-
-#### Response
-
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "schema_not_found",
-    "message": "The specified schema 'nonexistent_schema' was not found",
-    "details": {
-      "available_schemas": ["product_info", "faq", "code_explanation"]
+  "issue": "string",
+  "symptoms": ["string"],
+  "causes": ["string"],
+  "solutions": [
+    {
+      "step": number,
+      "description": "string"
     }
-  },
-  "metadata": {
-    "processing_time": 0.05
-  }
+  ],
+  "preventionTips": ["string"]
 }
 ```
 
-## Error Handling
+#### Example Usage
 
-The Fixed Schema Response MCP Server uses a consistent error handling approach. All errors are returned with a status code of `error` and include detailed information about the error.
+```
+@fixed-schema get_troubleshooting_guide issue: "computer won't start"
+```
 
-### Common Error Codes
+### 5. get_article_summary
 
-| Error Code | Description | HTTP Status |
-|------------|-------------|-------------|
-| `invalid_request` | The request format is invalid | 400 |
-| `schema_not_found` | The specified schema was not found | 404 |
-| `schema_validation_failed` | The generated response failed schema validation | 422 |
-| `model_error` | An error occurred while generating the response | 500 |
-| `rate_limit_exceeded` | The rate limit for API requests has been exceeded | 429 |
-| `server_error` | An internal server error occurred | 500 |
+Get a summary of an article or topic.
 
-### Error Details
+#### Parameters
 
-The `details` field in error responses provides additional information about the error. The content of this field depends on the error type:
+| Parameter | Type | Description | Required |
+|-----------|------|-------------|----------|
+| `topic` | string | Topic or article title to summarize | Yes |
 
-#### Schema Validation Errors
+#### Response Format
 
 ```json
 {
-  "status": "error",
-  "error": {
-    "code": "schema_validation_failed",
-    "message": "Generated response failed schema validation",
-    "details": {
-      "missing_fields": ["price"],
-      "invalid_fields": {
-        "category": "Expected string, got number"
-      }
-    }
-  }
+  "title": "string",
+  "author": "string",
+  "date": "string",
+  "summary": "string",
+  "keyPoints": ["string"],
+  "conclusion": "string"
 }
 ```
 
-#### Rate Limit Errors
+#### Example Usage
 
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "rate_limit_exceeded",
-    "message": "Rate limit exceeded",
-    "details": {
-      "limit": 10,
-      "reset_at": "2023-07-23T15:30:00Z"
-    }
-  }
-}
+```
+@fixed-schema get_article_summary topic: "artificial intelligence"
 ```
 
-### Error Recovery
+## Implementation Details
 
-The server implements several error recovery mechanisms:
+### AWS Bedrock Integration
 
-1. **Schema Validation Failures**: If a response fails schema validation, the server will attempt to fix it by:
-   - Adding missing required fields
-   - Converting fields to the correct type
-   - Removing extra fields
+The server uses AWS Bedrock Claude 4 Sonnet to generate responses. When a tool is invoked, the server:
 
-2. **Model Errors**: If a model error occurs, the server will:
-   - Retry the request up to 3 times
-   - Fall back to a different model if configured
-   - Return a detailed error if recovery fails
+1. Constructs a prompt for Claude based on the tool parameters
+2. Sends the prompt to Claude with the appropriate schema
+3. Parses and validates the response against the schema
+4. Returns the structured data to Kiro
 
-3. **Rate Limiting**: If rate limits are exceeded, the server will:
-   - Queue requests for later processing
-   - Implement exponential backoff for retries
-   - Return a rate limit error with reset time
+If AWS Bedrock is not available (e.g., due to missing credentials), the server falls back to generating mock responses that match the schema structure.
 
-## API Client Libraries
+### Mock Response Generation
 
-The Fixed Schema Response MCP Server provides client libraries for common programming languages:
+When AWS Bedrock is not available, the server generates mock responses based on the tool parameters. These responses follow the schema structure but contain generic information.
 
-### Python
+### Error Handling
+
+If an error occurs during response generation, the server will:
+
+1. Log the error with details
+2. Fall back to mock responses if possible
+3. Return an error response if recovery fails
+
+## Testing the API
+
+You can test the API using the included test_client.py script:
+
+```bash
+python test_client.py --product "iPhone 15 Pro"
+python test_client.py --person "Elon Musk"
+python test_client.py --api "user authentication"
+python test_client.py --troubleshoot "computer won't start"
+python test_client.py --article "artificial intelligence"
+```
+
+## Adding Custom Tools
+
+To add a custom tool:
+
+1. Create a new schema file in the `test_config/schemas` directory
+2. Add a new tool function to the `fastmcp_server.py` file:
 
 ```python
-from fixed_schema_mcp_client import FixedSchemaMCPClient
-
-client = FixedSchemaMCPClient(host="localhost", port=8000)
-response = client.generate(
-    query="Tell me about the latest iPhone",
-    schema="product_info",
-    parameters={"temperature": 0.5}
-)
-
-print(response.data)
+@mcp.tool()
+def get_custom_data(custom_param: str) -> Dict[str, Any]:
+    """
+    Get custom data.
+    
+    Args:
+        custom_param: Custom parameter
+    
+    Returns:
+        Custom data in a structured format
+    """
+    logger.info(f"Generating custom data for: {custom_param}")
+    
+    prompt = f"Please provide custom data for {custom_param}."
+    return invoke_claude(prompt, "custom_schema")
 ```
 
-### JavaScript
-
-```javascript
-const { FixedSchemaMCPClient } = require('fixed-schema-mcp-client');
-
-const client = new FixedSchemaMCPClient({ host: 'localhost', port: 8000 });
-client.generate({
-  query: 'Tell me about the latest iPhone',
-  schema: 'product_info',
-  parameters: { temperature: 0.5 }
-})
-.then(response => {
-  console.log(response.data);
-})
-.catch(error => {
-  console.error(error);
-});
-```
-
-## API Versioning
-
-The API uses versioning to ensure backward compatibility. The current version is v1.
-
-- All endpoints are prefixed with `/v1`
-- Future versions will use `/v2`, `/v3`, etc.
-- The server supports multiple API versions simultaneously
-
-## Rate Limiting
-
-The server implements rate limiting to prevent abuse:
-
-- 10 requests per minute per IP address
-- 1000 requests per day per API key
-- Rate limit headers are included in responses:
-  - `X-RateLimit-Limit`: The rate limit ceiling
-  - `X-RateLimit-Remaining`: The number of requests left
-  - `X-RateLimit-Reset`: The time when the rate limit resets
+3. Update the Kiro MCP configuration to include the new tool in the autoApprove list

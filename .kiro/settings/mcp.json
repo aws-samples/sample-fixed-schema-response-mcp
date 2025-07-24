@@ -1,23 +1,18 @@
 {
   "mcpServers": {
     "fixed-schema": {
-      "command": "./fixed_schema_mcp_server/run_mcp.sh",
-      "args": [
-        "--config",
-        "./fixed_schema_mcp_server/test_config/config.json",
-        "--log-level",
-        "INFO"
-      ],
+      "command": "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server/run_fastmcp.sh",
+      "args": [],
       "env": {
-        "FIXED_SCHEMA_MCP_LOG_LEVEL": "INFO"
+        "FASTMCP_LOG_LEVEL": "DEBUG"
       },
       "disabled": false,
       "autoApprove": [
-        "product_info",
-        "article_summary",
-        "person_profile",
-        "api_endpoint",
-        "troubleshooting_guide"
+        "get_product_info",
+        "get_article_summary",
+        "get_person_profile",
+        "get_api_endpoint",
+        "get_troubleshooting_guide"
       ]
     },
     "aws-docs": {
