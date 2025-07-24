@@ -131,6 +131,45 @@
    }
    ```
 
+### Setup Issues
+
+#### Issue: Virtual Environment Not Found
+
+**Symptoms:**
+- Error message: "Virtual environment not found"
+- Server fails to start
+
+**Solutions:**
+1. Run the setup script:
+   ```bash
+   ./setup.sh
+   ```
+
+2. Or manually create the virtual environment:
+   ```bash
+   python3 -m venv fixed_schema_mcp_venv
+   source fixed_schema_mcp_venv/bin/activate
+   pip install fastmcp boto3 jsonschema
+   ```
+
+#### Issue: Dependencies Not Installed
+
+**Symptoms:**
+- Error message: "FastMCP not installed"
+- Import errors when starting the server
+
+**Solutions:**
+1. Run the setup script:
+   ```bash
+   ./setup.sh
+   ```
+
+2. Or manually install dependencies:
+   ```bash
+   source fixed_schema_mcp_venv/bin/activate
+   pip install fastmcp boto3 jsonschema
+   ```
+
 ### Kiro Integration Issues
 
 #### Issue: Kiro Can't Connect to the Server
@@ -140,12 +179,17 @@
 - No response from the server
 
 **Solutions:**
-1. Check that the run_fastmcp.sh script has execute permissions:
+1. Make sure you've run the setup first:
+   ```bash
+   ./setup.sh
+   ```
+
+2. Check that the run_fastmcp.sh script has execute permissions:
    ```bash
    chmod +x fixed_schema_mcp_server/run_fastmcp.sh
    ```
 
-2. Verify that the path in the Kiro MCP configuration is correct:
+3. Verify that the path in the Kiro MCP configuration is correct:
    ```json
    {
      "mcpServers": {
@@ -156,7 +200,7 @@
    }
    ```
 
-3. Try running the server manually to check for errors:
+4. Try running the server manually to check for errors:
    ```bash
    ./fixed_schema_mcp_server/run_fastmcp.sh
    ```

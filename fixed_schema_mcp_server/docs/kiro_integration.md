@@ -5,8 +5,22 @@ This guide explains how to integrate the Fixed Schema Response MCP Server (FastM
 ## Prerequisites
 
 - Kiro installed and configured
-- FastMCP library installed
+- Fixed Schema MCP Server setup completed (run `./setup.sh` first)
 - AWS credentials configured (optional, for AWS Bedrock integration)
+
+## Setup
+
+Before configuring Kiro, make sure you've completed the setup:
+
+```bash
+# Run the setup script (only needed once)
+./setup.sh
+```
+
+This will:
+- Create a virtual environment
+- Install required dependencies (fastmcp, boto3, jsonschema)
+- Make the run script executable
 
 ## Configuration
 

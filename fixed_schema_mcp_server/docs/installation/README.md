@@ -14,11 +14,22 @@ Before installing the Fixed Schema Response MCP Server (FastMCP Edition), ensure
 
 ### Installation Methods
 
-#### Method 1: Install Dependencies
+#### Method 1: Quick Setup
 
-```bash
-pip install fastmcp boto3 jsonschema
-```
+1. Create a virtual environment:
+   ```bash
+   python3 -m venv fixed_schema_mcp_venv
+   ```
+
+2. Activate the virtual environment:
+   ```bash
+   source fixed_schema_mcp_venv/bin/activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install fastmcp boto3 jsonschema
+   ```
 
 #### Method 2: Install from Source
 
@@ -30,9 +41,15 @@ To install from source:
    cd fixed-schema-mcp-server
    ```
 
-2. Install the package:
+2. Create and activate virtual environment:
    ```bash
-   pip install -e .
+   python3 -m venv fixed_schema_mcp_venv
+   source fixed_schema_mcp_venv/bin/activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install fastmcp boto3 jsonschema
    ```
 
 ## AWS Credentials Configuration (Optional)

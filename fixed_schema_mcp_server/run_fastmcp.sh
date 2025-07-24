@@ -9,28 +9,41 @@ VENV_PATH="${SCRIPT_DIR}/../fixed_schema_mcp_venv"
 
 # Check if the virtual environment exists
 if [ ! -d "$VENV_PATH" ]; then
-    echo "Virtual environment not found at $VENV_PATH"
-    echo "Creating virtual environment..."
-    python3 -m venv "$VENV_PATH"
+    echo "Error: Virtual environment not found at $VENV_PATH"
+    echo "Please run the setup first:"
+    echo "  ./setup.sh"
+    echo ""
+    echo "Or manually:"
+    echo "  python3 -m venv fixed_schema_mcp_venv"
+    echo "  source fixed_schema_mcp_venv/bin/activate"
+    echo "  pip install fastmcp boto3 jsonschema"
+    exit 1
 fi
 
 # Activate the virtual environment
 source "$VENV_PATH/bin/activate"
 
-# Install required packages
-pip install -e "$SCRIPT_DIR"
-pip install fastmcp boto3
+# Check if required packages are installed
+python -c "import mcp.server.fastmcp" 2>/dev/null || {
+    echo "Error: FastMCP not installed. Please run setup first:"
+    echo "  ./setup.sh"
+    echo ""
+    echo "Or manually install dependencies:"
+    echo "  source fixed_schema_mcp_venv/bin/activate"
+    echo "  pip install fastmcp boto3 jsonschema"
+    exit 1
+}
 
-# Check AWS credentials
+# Check AWS credentials (optional)
 if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
-    echo "Warning: AWS credentials not found in environment variables."
-    echo "The server will fall back to mock responses if AWS credentials are not configured."
-    echo "To use AWS Bedrock, please configure your AWS credentials using one of these methods:"
+    echo "Info: AWS credentials not found in environment variables."
+    echo "The server will use mock responses. To use AWS Bedrock, configure your AWS credentials:"
     echo "1. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables"
     echo "2. Configure credentials in ~/.aws/credentials"
     echo "3. Use an EC2 instance role or container role"
+    echo ""
 fi
 
 # Run the FastMCP server
-echo "Starting FastMCP server with AWS Bedrock Claude 4 Sonnet..."
+echo "Starting FastMCP server..."
 python "$SCRIPT_DIR/fastmcp_server.py"

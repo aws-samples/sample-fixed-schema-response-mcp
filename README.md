@@ -22,17 +22,33 @@ A Model Context Protocol (MCP) server that processes user queries and returns re
 
 ### Setup
 
+#### Option 1: Quick Setup (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/fixed-schema-mcp-server.git
+cd fixed-schema-mcp-server
+
+# Run the setup script
+./setup.sh
+```
+
+#### Option 2: Manual Setup
+
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/fixed-schema-mcp-server.git
 cd fixed-schema-mcp-server
 
 # Create a virtual environment
-python -m venv fixed_schema_mcp_venv
+python3 -m venv fixed_schema_mcp_venv
 source fixed_schema_mcp_venv/bin/activate
 
 # Install dependencies
-pip install -r requirements.txt
+pip install fastmcp boto3 jsonschema
+
+# Make run script executable
+chmod +x fixed_schema_mcp_server/run_fastmcp.sh
 ```
 
 ## Quick Start
