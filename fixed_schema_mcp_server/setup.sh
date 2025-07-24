@@ -3,6 +3,13 @@
 
 echo "Setting up Fixed Schema Response MCP Server (FastMCP Edition)..."
 
+# Get the directory of this script and navigate to project root
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+
+# Change to project root directory
+cd "$PROJECT_ROOT"
+
 # Check if virtual environment already exists
 if [ -d "fixed_schema_mcp_venv" ]; then
     echo "Virtual environment already exists. Skipping creation."
@@ -39,4 +46,4 @@ echo "To test the server:"
 echo "  python fixed_schema_mcp_server/test_client.py --product 'iPhone 15 Pro'"
 echo ""
 echo "To configure with Kiro, update the path in .kiro/settings/mcp.json to:"
-echo "  \"command\": \"$(pwd)/fixed_schema_mcp_server/run_fastmcp.sh\""
+echo "  \"command\": \"$PROJECT_ROOT/fixed_schema_mcp_server/run_fastmcp.sh\""

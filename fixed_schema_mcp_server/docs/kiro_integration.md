@@ -14,7 +14,7 @@ Before configuring Kiro, make sure you've completed the setup:
 
 ```bash
 # Run the setup script (only needed once)
-./setup.sh
+./fixed_schema_mcp_server/setup.sh
 ```
 
 This will:

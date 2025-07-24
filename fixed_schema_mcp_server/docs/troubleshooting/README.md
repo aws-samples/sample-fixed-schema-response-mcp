@@ -142,7 +142,7 @@
 **Solutions:**
 1. Run the setup script:
    ```bash
-   ./setup.sh
+   ./fixed_schema_mcp_server/setup.sh
    ```
 
 2. Or manually create the virtual environment:
@@ -161,7 +161,7 @@
 **Solutions:**
 1. Run the setup script:
    ```bash
-   ./setup.sh
+   ./fixed_schema_mcp_server/setup.sh
    ```
 
 2. Or manually install dependencies:
@@ -181,7 +181,7 @@
 **Solutions:**
 1. Make sure you've run the setup first:
    ```bash
-   ./setup.sh
+   ./fixed_schema_mcp_server/setup.sh
    ```
 
 2. Check that the run_fastmcp.sh script has execute permissions:
