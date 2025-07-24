@@ -152,9 +152,9 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# Kiro specs (internal development files)
+# Kiro IDE files (internal development files)
 .kiro/specs/
-
+.kiro/steering/
 # temp
 temp-stuff
 temp-stuff/*
