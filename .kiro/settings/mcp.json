@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "fixed-schema": {
-      "command": "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server/run_fastmcp.sh",
-      "args": [],
+      "command": "uv",
+      "args": ["--directory", "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server", "run", "fastmcp_server.py"],
       "env": {
         "FASTMCP_LOG_LEVEL": "DEBUG"
       },

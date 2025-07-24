@@ -1,14 +1,28 @@
-FROM python:3.9-slim
+FROM python:3.12-slim
 
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+# Set working directory
 WORKDIR /app
 
-COPY . /app/
+# Copy project files
+COPY . .
 
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir fastmcp boto3
+# Create non-root user for security
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
 
-# Make the run script executable
-RUN chmod +x run_fastmcp.sh
+# Expose port (if running HTTP version)
+EXPOSE 8000
 
-# Run the FastMCP server
-CMD ["./run_fastmcp.sh"]
+# Set environment variables
+ENV UV_SYSTEM_PYTHON=1
+ENV PYTHONUNBUFFERED=1
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD python -c "import sys; sys.exit(0)" || exit 1
+
+# Run the FastMCP server using uv
+CMD ["uv", "run", "fastmcp_server.py"]

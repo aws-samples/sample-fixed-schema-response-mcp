@@ -5,6 +5,15 @@ Fixed Schema MCP Server using FastMCP with AWS Bedrock Claude 4 Sonnet.
 This module provides a FastMCP server implementation for the Fixed Schema Response MCP Server
 that uses AWS Bedrock Claude 4 Sonnet to generate responses.
 """
+# /// script
+# dependencies = [
+#     "fastmcp>=0.1.0",
+#     "boto3>=1.28.0",
+#     "botocore>=1.31.0",
+#     "jsonschema>=4.0.0",
+# ]
+# requires-python = ">=3.10"
+# ///
 
 import json
 import logging

@@ -19,6 +19,12 @@ A Model Context Protocol (MCP) server that processes user queries and returns re
    @fixed-schema get_product_info product_name: "iPhone 15 Pro"
    ```
 
+## Integration Guides
+
+- **[Kiro Integration](fixed_schema_mcp_server/docs/KIRO_INTEGRATION.md)** - Complete setup guide for Kiro IDE
+- **[Q Chat Integration](fixed_schema_mcp_server/docs/Q_CHAT_INTEGRATION.md)** - Complete setup guide for Q Chat
+- **[Adding New Schemas](fixed_schema_mcp_server/docs/ADDING_SCHEMAS.md)** - Guide for creating custom schemas and tools
+
 ## Documentation
 
 For complete documentation, see: [`fixed_schema_mcp_server/README.md`](fixed_schema_mcp_server/README.md)
