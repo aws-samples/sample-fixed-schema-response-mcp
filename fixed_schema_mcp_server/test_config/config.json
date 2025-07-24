@@ -14,7 +14,7 @@
         }
     },
     "schemas": {
-        "path": "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server/test_config/schemas",
+        "path": "./test_config/schemas",
         "default_schema": "product_info"
     }
 }

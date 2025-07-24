@@ -1,10 +1,10 @@
 {
   "mcpServers": {
     "fixed-schema": {
-      "command": "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server/run_mcp.sh",
+      "command": "./fixed_schema_mcp_server/run_mcp.sh",
       "args": [
         "--config",
-        "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server/test_config/config.json",
+        "./fixed_schema_mcp_server/test_config/config.json",
         "--log-level",
         "INFO"
       ],
