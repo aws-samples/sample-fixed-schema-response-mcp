@@ -63,7 +63,7 @@ Add the following configuration to Q Chat's MCP configuration file:
 
 **Important**: Replace `/ABSOLUTE/PATH/TO/YOUR/PROJECT/fixed_schema_mcp_server` with your actual path, for example:
 ```
-/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server
+/path/to/your/fixed_schema_mcp_server
 ```
 
 ### Step 3: Complete Configuration Example
@@ -77,7 +77,7 @@ If Q Chat already has other MCP servers configured, your complete configuration 
       "command": "uv",
       "args": [
         "--directory", 
-        "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server", 
+        "/path/to/your/fixed_schema_mcp_server", 
         "run", 
         "fastmcp_server.py"
       ],
@@ -160,12 +160,12 @@ Q Chat: {
 
 1. **Verify the absolute path is correct:**
    ```bash
-   ls -la /Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server/fastmcp_server.py
+   ls -la /path/to/your/fixed_schema_mcp_server/fastmcp_server.py
    ```
 
 2. **Test the server manually:**
    ```bash
-   cd /Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server
+   cd /path/to/your/fixed_schema_mcp_server
    uv run fastmcp_server.py
    ```
 
@@ -186,7 +186,7 @@ Q Chat: {
 
 2. **Test dependency installation:**
    ```bash
-   cd /Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server
+   cd /path/to/your/fixed_schema_mcp_server
    uv run --help
    ```
 
@@ -263,9 +263,9 @@ Available logging levels:
   "mcpServers": {
     "fixed-schema": {
       "command": "python",
-      "args": ["/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server/fastmcp_server.py"],
+      "args": ["/path/to/your/fixed_schema_mcp_server/fastmcp_server.py"],
       "env": {
-        "PYTHONPATH": "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server"
+        "PYTHONPATH": "/path/to/your/fixed_schema_mcp_server"
       }
     }
   }

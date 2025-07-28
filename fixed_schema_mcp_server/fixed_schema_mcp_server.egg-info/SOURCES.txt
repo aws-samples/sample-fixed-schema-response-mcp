@@ -1,7 +1,0 @@
-fastmcp_server.py
-setup.py
-fixed_schema_mcp_server.egg-info/PKG-INFO
-fixed_schema_mcp_server.egg-info/SOURCES.txt
-fixed_schema_mcp_server.egg-info/dependency_links.txt
-fixed_schema_mcp_server.egg-info/requires.txt
-fixed_schema_mcp_server.egg-info/top_level.txt

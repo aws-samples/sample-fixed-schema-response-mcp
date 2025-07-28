@@ -2,7 +2,7 @@
   "mcpServers": {
     "fixed-schema": {
       "command": "uv",
-      "args": ["--directory", "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server", "run", "fastmcp_server.py"],
+      "args": ["--directory", "/path/to/your/fixed_schema_mcp_server", "run", "fastmcp_server.py"],
       "env": {
         "FASTMCP_LOG_LEVEL": "DEBUG"
       },

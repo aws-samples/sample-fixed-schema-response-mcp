@@ -46,7 +46,7 @@ Add this configuration to your `.kiro/settings/mcp.json`:
       "command": "uv",
       "args": [
         "--directory", 
-        "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server", 
+        "/path/to/your/fixed_schema_mcp_server", 
         "run", 
         "fastmcp_server.py"
       ],
