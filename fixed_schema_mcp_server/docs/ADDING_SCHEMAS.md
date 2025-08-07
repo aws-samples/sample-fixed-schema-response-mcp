@@ -1,17 +1,19 @@
 # Adding New Schemas Guide
 
-This guide explains how to add custom schemas to the Fixed Schema Response MCP Server to support new types of structured responses.
+This guide explains how to add custom schemas to the Generic Schema MCP Server. With the new architecture, adding schemas is incredibly simple - just drop a JSON file and restart!
 
 ## Overview
 
-The MCP server uses JSON schemas to define the structure of responses. Each schema consists of:
-1. **Schema Definition** - JSON file defining the response structure
-2. **Tool Function** - Python function that uses the schema
-3. **Configuration** - Adding the tool to MCP client configurations
+The Generic MCP server automatically loads JSON schemas and creates corresponding tools. Each schema consists of:
+1. **Schema Definition** - JSON file defining the response structure (this is all you need!)
+2. **Automatic Tool Generation** - The server creates tools automatically
+3. **Optional Configuration** - Add the tool to MCP client autoApprove lists
 
-## Step-by-Step Process
+**No code changes required!** The server handles everything automatically.
 
-### Step 1: Create a Schema File
+## Simple Step-by-Step Process
+
+### Step 1: Create a Schema File (That's It!)
 
 Create a new JSON file in the `fixed_schema_mcp_server/test_config/schemas/` directory.
 
@@ -76,81 +78,23 @@ Create `book_review.json`:
         "description": "List of similar book recommendations"
       }
     }
-  }
+  },
+  "system_prompt": "You are a professional book critic with expertise in literature. Provide thoughtful, balanced book reviews that consider plot, character development, writing style, and overall literary merit."
 }
 ```
 
-### Step 2: Add Tool Function
+### Step 2: Restart the Server
 
-Edit `fixed_schema_mcp_server/fastmcp_server.py` to add a new tool function.
+That's it! Just restart the MCP server:
 
-Add this function before the `if __name__ == "__main__":` line:
-
-```python
-@mcp.tool()
-def get_book_review(book_title: str, author: str = None) -> Dict[str, Any]:
-    """
-    Get a detailed book review.
-    
-    Args:
-        book_title: Title of the book to review
-        author: Author of the book (optional, helps with accuracy)
-    
-    Returns:
-        Book review information in a structured format
-    """
-    logger.info(f"Generating book review for: {book_title} by {author or 'unknown author'}")
-    
-    if author:
-        prompt = f"Please provide a detailed review of the book '{book_title}' by {author}. Include title, author, ISBN, rating (1-5), detailed review, genres, publication year, recommendation, and similar books."
-    else:
-        prompt = f"Please provide a detailed review of the book '{book_title}'. Include title, author, ISBN, rating (1-5), detailed review, genres, publication year, recommendation, and similar books."
-    
-    return invoke_claude(prompt, "book_review")
+```bash
+cd fixed_schema_mcp_server
+uv run fastmcp_server.py
 ```
 
-### Step 3: Add Mock Response Support
+The tool `get_book_review` is now automatically available!
 
-Add a mock response case in the `generate_mock_response` function in `fastmcp_server.py`:
-
-```python
-def generate_mock_response(prompt: str, schema_name: str) -> Dict[str, Any]:
-    """
-    Generate a mock response based on the schema.
-    """
-    logger.info(f"Generating mock response for schema: {schema_name}")
-    
-    # ... existing cases ...
-    
-    elif schema_name == "book_review":
-        book_title = "Sample Book"
-        if "'" in prompt:
-            # Try to extract book title from prompt
-            import re
-            match = re.search(r"'([^']+)'", prompt)
-            if match:
-                book_title = match.group(1)
-        
-        return {
-            "title": book_title,
-            "author": "Sample Author",
-            "isbn": "978-0-123456-78-9",
-            "rating": 4.2,
-            "review": f"This is a comprehensive review of {book_title}. The book offers valuable insights and is well-written with engaging content that keeps readers interested throughout.",
-            "genres": ["Fiction", "Drama"],
-            "publication_year": 2023,
-            "recommended": True,
-            "similar_books": [
-                "Similar Book 1",
-                "Similar Book 2",
-                "Similar Book 3"
-            ]
-        }
-    
-    # ... rest of function ...
-```
-
-### Step 4: Update MCP Client Configurations
+### Step 3: Update MCP Client Configurations (Optional)
 
 #### For Kiro (`.kiro/settings/mcp.json`):
 
@@ -179,23 +123,22 @@ Add the new tool to the `autoApprove` list:
 
 Add the new tool to your Q Chat MCP configuration's `autoApprove` list similarly.
 
-### Step 5: Test Your New Schema
+### Step 4: Test Your New Schema
 
-1. **Test the server**:
+1. **Verify the schema loaded**:
    ```bash
    cd fixed_schema_mcp_server
-   uv run fastmcp_server.py
+   python -c "import fastmcp_server; print('book_review' in fastmcp_server.SCHEMAS)"
    ```
 
-2. **Test with the test client**:
-   ```bash
-   # You'll need to update test_client.py to support the new tool
-   # Or test directly in Kiro/Q Chat
+2. **Test in Kiro**:
+   ```
+   @fixed-schema get_book_review query: "The Great Gatsby by F. Scott Fitzgerald"
    ```
 
-3. **Test in Kiro**:
+3. **List all schemas to confirm**:
    ```
-   @fixed-schema get_book_review book_title: "The Great Gatsby" author: "F. Scott Fitzgerald"
+   @fixed-schema list_available_schemas
    ```
 
 ## Schema Design Best Practices
@@ -357,66 +300,46 @@ Add descriptions for better AI understanding:
 }
 ```
 
-## Tool Function Patterns
+## How the Generic Architecture Works
 
-### Basic Tool Function
+### Automatic Tool Generation
 
-```python
-@mcp.tool()
-def get_schema_name(primary_param: str, optional_param: str = None) -> Dict[str, Any]:
-    """
-    Brief description of what this tool does.
-    
-    Args:
-        primary_param: Description of the main parameter
-        optional_param: Description of optional parameter
-    
-    Returns:
-        Structured data matching the schema
-    """
-    logger.info(f"Generating {schema_name} for: {primary_param}")
-    
-    # Build prompt based on parameters
-    prompt = f"Generate {schema_name} for {primary_param}"
-    if optional_param:
-        prompt += f" with {optional_param}"
-    
-    return invoke_claude(prompt, "schema_name")
-```
+The server automatically creates tools for each schema file:
 
-### Tool Function with Multiple Parameters
+1. **File Discovery**: Scans `test_config/schemas/*.json` files
+2. **Schema Loading**: Loads each JSON schema definition
+3. **Tool Creation**: Creates a function named `get_{schema_name}`
+4. **Tool Registration**: Registers the tool with the MCP framework
+
+### Generated Tool Pattern
+
+Each generated tool follows this pattern:
 
 ```python
-@mcp.tool()
-def get_complex_data(
-    required_param: str,
-    category: str = "general",
-    include_details: bool = True,
-    max_items: int = 10
-) -> Dict[str, Any]:
+def get_{schema_name}(query: str) -> Dict[str, Any]:
     """
-    Generate complex structured data.
+    {schema.description}
     
     Args:
-        required_param: The main subject
-        category: Category to focus on
-        include_details: Whether to include detailed information
-        max_items: Maximum number of items to return
+        query: The input query or request
     
     Returns:
-        Complex structured data
+        {schema_name} information in a structured format
     """
-    logger.info(f"Generating complex data for: {required_param}")
+    # Uses schema description to create specific prompt
+    prompt = f"Please provide {schema.description} based on this query: {query}"
     
-    prompt = f"Generate detailed information about {required_param}"
-    if category != "general":
-        prompt += f" in the {category} category"
-    if include_details:
-        prompt += " with comprehensive details"
-    prompt += f" limited to {max_items} items"
-    
-    return invoke_claude(prompt, "complex_schema")
+    # Uses custom system prompt if available
+    return invoke_claude(prompt, schema_name)
 ```
+
+### Benefits of the Generic Approach
+
+- **No Code Changes**: Add schemas without touching Python code
+- **Consistent Interface**: All tools use the same `query` parameter
+- **Automatic Documentation**: Tool descriptions generated from schema metadata
+- **Custom AI Behavior**: Each schema can have its own system prompt
+- **Mock Response Generation**: Automatic fallback responses based on schema structure
 
 ## Testing Your Schema
 
@@ -501,10 +424,11 @@ kill $SERVER_PID
 - "Tool not found" errors
 
 **Solutions:**
-1. Add tool to `autoApprove` list in MCP configuration
-2. Restart MCP client after changes
-3. Check function name matches expected pattern
-4. Verify `@mcp.tool()` decorator is present
+1. **Check schema file name**: Must be `{name}.json` where `name` matches the schema's `"name"` field
+2. **Restart the server**: Schema files are loaded at startup
+3. **Add tool to `autoApprove` list** in MCP configuration
+4. **Restart MCP client** after configuration changes
+5. **Verify schema syntax**: Use `python -c "import json; json.load(open('your_schema.json'))"`
 
 ## Advanced Features
 
@@ -537,9 +461,15 @@ Use `oneOf`, `anyOf`, or `allOf` for complex validation:
 }
 ```
 
-### Dynamic Schema Loading
+### Runtime Schema Addition
 
-For advanced use cases, you can modify the `load_schemas()` function to support dynamic schema loading or schema inheritance.
+You can also add schemas at runtime without restarting:
+
+```
+@fixed-schema add_schema schema_name: "weather_report" schema_definition: "{\"type\": \"object\", \"properties\": {\"location\": {\"type\": \"string\"}, \"temperature\": {\"type\": \"number\"}, \"conditions\": {\"type\": \"string\"}}, \"required\": [\"location\", \"temperature\", \"conditions\"]}" description: "Weather report information"
+```
+
+This immediately creates the `get_weather_report` tool without restarting!
 
 ## Next Steps
 

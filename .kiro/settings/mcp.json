@@ -2,17 +2,22 @@
   "mcpServers": {
     "fixed-schema": {
       "command": "uv",
-      "args": ["--directory", "/path/to/your/fixed_schema_mcp_server", "run", "fastmcp_server.py"],
+      "args": [
+        "run",
+        "--directory",
+        "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server",
+        "fastmcp_server.py"
+      ],
       "env": {
         "FASTMCP_LOG_LEVEL": "DEBUG"
       },
       "disabled": false,
       "autoApprove": [
-        "get_product_info",
-        "get_article_summary",
-        "get_person_profile",
-        "get_api_endpoint",
-        "get_troubleshooting_guide"
+        "get_troubleshooting_guide",
+        "get_recipe",
+        "get_movie_review",
+        "list_available_schemas",
+        "add_schema"
       ]
     },
     "aws-docs": {

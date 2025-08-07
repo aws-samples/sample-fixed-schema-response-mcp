@@ -1,0 +1,56 @@
+{
+  "name": "recipe",
+  "description": "Schema for cooking recipe information",
+  "schema": {
+    "type": "object",
+    "required": ["name", "ingredients", "instructions"],
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "The name of the recipe"
+      },
+      "description": {
+        "type": "string",
+        "description": "A brief description of the dish"
+      },
+      "ingredients": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"},
+            "amount": {"type": "string"},
+            "unit": {"type": "string"}
+          },
+          "required": ["name", "amount"]
+        },
+        "description": "List of ingredients needed"
+      },
+      "instructions": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Step-by-step cooking instructions"
+      },
+      "prep_time": {
+        "type": "integer",
+        "description": "Preparation time in minutes"
+      },
+      "cook_time": {
+        "type": "integer",
+        "description": "Cooking time in minutes"
+      },
+      "servings": {
+        "type": "integer",
+        "description": "Number of servings"
+      },
+      "difficulty": {
+        "type": "string",
+        "enum": ["easy", "medium", "hard"],
+        "description": "Difficulty level"
+      }
+    }
+  },
+  "system_prompt": "You are a culinary expert. Provide detailed, accurate cooking recipes with clear instructions and proper ingredient measurements."
+}

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Fixed Schema MCP Server using FastMCP with AWS Bedrock Claude 4 Sonnet.
+Generic Schema MCP Server using FastMCP with AWS Bedrock Claude.
 
-This module provides a FastMCP server implementation for the Fixed Schema Response MCP Server
-that uses AWS Bedrock Claude 4 Sonnet to generate responses.
+This module provides a FastMCP server implementation that dynamically loads JSON schemas
+and creates corresponding tools for structured response generation using AWS Bedrock Claude.
 """
 # /// script
 # dependencies = [
@@ -20,7 +20,8 @@ import logging
 import os
 import boto3
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Callable
+from functools import partial
 
 from mcp.server.fastmcp import FastMCP
 
@@ -33,7 +34,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server
-mcp = FastMCP("fixed-schema")
+mcp = FastMCP("generic-schema")
 
 # Initialize AWS Bedrock client
 try:
@@ -47,19 +48,22 @@ except Exception as e:
     logger.warning("Falling back to mock responses")
     bedrock_runtime = None
 
-# Load schemas from the test_config directory
-def load_schemas() -> Dict[str, Dict[str, Any]]:
+def load_schemas(schemas_dir: str = None) -> Dict[str, Dict[str, Any]]:
     """
-    Load schemas from the test_config directory.
+    Load schemas from the specified directory or default test_config directory.
+    
+    Args:
+        schemas_dir: Optional path to schemas directory. If None, uses default.
     
     Returns:
         A dictionary of schema name to schema definition
     """
     schemas = {}
     
-    # Get the directory of this script
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    schemas_dir = os.path.join(script_dir, "test_config", "schemas")
+    if schemas_dir is None:
+        # Get the directory of this script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        schemas_dir = os.path.join(script_dir, "test_config", "schemas")
     
     # Check if the schemas directory exists
     if not os.path.exists(schemas_dir):
@@ -82,132 +86,40 @@ def load_schemas() -> Dict[str, Dict[str, Any]]:
     
     return schemas
 
-# Load the schemas
-SCHEMAS = load_schemas()
+def load_config() -> Dict[str, Any]:
+    """
+    Load configuration from config.json file.
+    
+    Returns:
+        Configuration dictionary
+    """
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(script_dir, "test_config", "config.json")
+    
+    try:
+        with open(config_path, "r") as f:
+            config = json.load(f)
+        logger.info("Loaded configuration from config.json")
+        return config
+    except Exception as e:
+        logger.warning(f"Failed to load config.json: {e}")
+        return {}
 
-# If no schemas were loaded, use default schemas
+# Load configuration and schemas
+CONFIG = load_config()
+SCHEMAS_DIR = CONFIG.get("schemas", {}).get("path")
+SCHEMAS = load_schemas(SCHEMAS_DIR)
+
+# Log schema loading results
 if not SCHEMAS:
-    logger.warning("No schemas found, using default schemas")
-    SCHEMAS = {
-        "product_info": {
-            "name": "product_info",
-            "description": "Schema for product information",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "description": {"type": "string"},
-                    "price": {"type": "number"},
-                    "category": {"type": "string"},
-                    "features": {"type": "array", "items": {"type": "string"}},
-                    "rating": {"type": "number"},
-                    "inStock": {"type": "boolean"}
-                },
-                "required": ["name", "price", "category"]
-            }
-        },
-        "person_profile": {
-            "name": "person_profile",
-            "description": "Schema for person profile information",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "age": {"type": "integer"},
-                    "occupation": {"type": "string"},
-                    "skills": {"type": "array", "items": {"type": "string"}},
-                    "contact": {
-                        "type": "object",
-                        "properties": {
-                            "email": {"type": "string"},
-                            "phone": {"type": "string"}
-                        }
-                    }
-                },
-                "required": ["name"]
-            }
-        },
-        "api_endpoint": {
-            "name": "api_endpoint",
-            "description": "Schema for API endpoint information",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string"},
-                    "method": {"type": "string"},
-                    "description": {"type": "string"},
-                    "parameters": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "name": {"type": "string"},
-                                "type": {"type": "string"},
-                                "required": {"type": "boolean"},
-                                "description": {"type": "string"}
-                            }
-                        }
-                    },
-                    "responses": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "code": {"type": "integer"},
-                                "description": {"type": "string"},
-                                "example": {"type": "object"}
-                            }
-                        }
-                    }
-                },
-                "required": ["path", "method"]
-            }
-        },
-        "troubleshooting_guide": {
-            "name": "troubleshooting_guide",
-            "description": "Schema for troubleshooting guide",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "issue": {"type": "string"},
-                    "symptoms": {"type": "array", "items": {"type": "string"}},
-                    "causes": {"type": "array", "items": {"type": "string"}},
-                    "solutions": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "step": {"type": "integer"},
-                                "description": {"type": "string"}
-                            }
-                        }
-                    },
-                    "preventionTips": {"type": "array", "items": {"type": "string"}}
-                },
-                "required": ["issue", "solutions"]
-            }
-        },
-        "article_summary": {
-            "name": "article_summary",
-            "description": "Schema for article summary",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "title": {"type": "string"},
-                    "author": {"type": "string"},
-                    "date": {"type": "string"},
-                    "summary": {"type": "string"},
-                    "keyPoints": {"type": "array", "items": {"type": "string"}},
-                    "conclusion": {"type": "string"}
-                },
-                "required": ["title", "summary"]
-            }
-        }
-    }
+    logger.warning("No schemas found! Server will start but no schema tools will be available.")
+    logger.info("You can add schemas dynamically using the 'add_schema' tool.")
+else:
+    logger.info(f"Successfully loaded {len(SCHEMAS)} schemas from files: {list(SCHEMAS.keys())}")
 
 def invoke_claude(prompt: str, schema_name: str) -> Dict[str, Any]:
     """
-    Invoke Claude 4 Sonnet to generate a response based on the prompt and schema.
+    Invoke Claude to generate a response based on the prompt and schema.
     
     Args:
         prompt: The prompt to send to Claude
@@ -226,12 +138,23 @@ def invoke_claude(prompt: str, schema_name: str) -> Dict[str, Any]:
         return generate_mock_response(prompt, schema_name)
     
     try:
-        # Get the schema
-        schema = SCHEMAS.get(schema_name, {}).get("schema", {})
+        # Get the schema and system prompt
+        schema_config = SCHEMAS.get(schema_name, {})
+        schema = schema_config.get("schema", {})
+        custom_system_prompt = schema_config.get("system_prompt", "")
         schema_json = json.dumps(schema, indent=2)
         
-        # Create the prompt for Claude
-        system_message = f"""You are a helpful assistant that generates structured information in JSON format.
+        # Create the system message, using custom prompt if available
+        if custom_system_prompt:
+            system_message = f"""{custom_system_prompt}
+
+Your response must strictly follow this JSON schema:
+
+{schema_json}
+
+Respond ONLY with valid JSON that matches this schema. Do not include any explanations, markdown formatting, or text outside the JSON structure."""
+        else:
+            system_message = f"""You are a helpful assistant that generates structured information in JSON format.
 Please provide accurate and detailed information based on the user's query.
 Your response must strictly follow this JSON schema:
 
@@ -307,7 +230,7 @@ Respond ONLY with valid JSON that matches this schema. Do not include any explan
 
 def generate_mock_response(prompt: str, schema_name: str) -> Dict[str, Any]:
     """
-    Generate a mock response based on the schema.
+    Generate a mock response based on the schema definition.
     
     Args:
         prompt: The prompt that would have been sent to Claude
@@ -318,198 +241,212 @@ def generate_mock_response(prompt: str, schema_name: str) -> Dict[str, Any]:
     """
     logger.info(f"Generating mock response for schema: {schema_name}")
     
-    if schema_name == "product_info":
-        query = prompt.split("about ")[-1].strip()
-        return {
-            "name": query,
-            "description": f"This is an example product based on query: {query}",
-            "price": 99.99,
-            "category": "Electronics",
-            "features": ["Feature 1", "Feature 2", "Feature 3"],
-            "rating": 4.5,
-            "inStock": True
-        }
-    elif schema_name == "person_profile":
-        query = prompt.split("about ")[-1].strip()
-        return {
-            "name": query,
-            "age": 30,
-            "occupation": "Software Engineer",
-            "skills": ["Python", "JavaScript", "AWS"],
-            "contact": {
-                "email": f"{query.lower().replace(' ', '.')}@example.com",
-                "phone": "555-123-4567"
-            }
-        }
-    elif schema_name == "api_endpoint":
-        query = prompt.split("for ")[-1].strip()
-        return {
-            "path": f"/api/v1/{query.lower().replace(' ', '-')}",
-            "method": "GET",
-            "description": f"Get information about {query}",
-            "parameters": [
-                {
-                    "name": "page",
-                    "type": "integer",
-                    "required": False,
-                    "description": "Page number"
-                },
-                {
-                    "name": "limit",
-                    "type": "integer",
-                    "required": False,
-                    "description": "Number of items per page"
-                }
-            ],
-            "responses": [
-                {
-                    "code": 200,
-                    "description": "Success",
-                    "example": {
-                        "data": [
-                            {"id": 1, "name": "Item 1"},
-                            {"id": 2, "name": "Item 2"}
-                        ],
-                        "total": 2
-                    }
-                },
-                {
-                    "code": 401,
-                    "description": "Unauthorized"
-                }
-            ]
-        }
-    elif schema_name == "troubleshooting_guide":
-        query = prompt.split("for ")[-1].strip()
-        return {
-            "issue": f"Problem with {query}",
-            "symptoms": [
-                f"{query} is not working properly",
-                "Error messages appear",
-                "System performance is degraded"
-            ],
-            "causes": [
-                "Configuration issues",
-                "Software bugs"
-            ],
-            "solutions": [
-                {
-                    "step": 1,
-                    "description": f"Check if {query} is properly configured"
-                },
-                {
-                    "step": 2,
-                    "description": "Restart the system"
-                },
-                {
-                    "step": 3,
-                    "description": "Contact support if the issue persists"
-                }
-            ],
-            "preventionTips": [
-                "Regularly update your software",
-                "Follow best practices"
-            ]
-        }
-    elif schema_name == "article_summary":
-        query = prompt.split("about ")[-1].strip()
-        return {
-            "title": f"Summary of {query}",
-            "author": "AI Assistant",
-            "date": "2025-07-23",
-            "summary": f"This is a summary of an article about {query}.",
-            "keyPoints": [
-                f"{query} is an important topic",
-                "There are many aspects to consider",
-                "Further research is needed"
-            ],
-            "conclusion": f"In conclusion, {query} is a fascinating subject that deserves attention."
-        }
-    else:
+    schema_config = SCHEMAS.get(schema_name)
+    if not schema_config:
         return {"error": f"Unknown schema: {schema_name}"}
+    
+    schema = schema_config.get("schema", {})
+    
+    def generate_value_for_type(prop_schema: Dict[str, Any], field_name: str = "") -> Any:
+        """Generate a mock value based on JSON schema type."""
+        prop_type = prop_schema.get("type", "string")
+        
+        if prop_type == "string":
+            if "email" in field_name.lower():
+                return "example@example.com"
+            elif "phone" in field_name.lower():
+                return "555-123-4567"
+            elif "date" in field_name.lower():
+                return "2025-07-23"
+            else:
+                return f"Example {field_name}" if field_name else "Example value"
+        
+        elif prop_type == "integer":
+            return 42
+        
+        elif prop_type == "number":
+            return 99.99
+        
+        elif prop_type == "boolean":
+            return True
+        
+        elif prop_type == "array":
+            items_schema = prop_schema.get("items", {"type": "string"})
+            return [generate_value_for_type(items_schema, f"{field_name}_item") for _ in range(2)]
+        
+        elif prop_type == "object":
+            obj_properties = prop_schema.get("properties", {})
+            result = {}
+            for prop_name, prop_def in obj_properties.items():
+                result[prop_name] = generate_value_for_type(prop_def, prop_name)
+            return result
+        
+        else:
+            return f"Mock value for {prop_type}"
+    
+    # Generate mock response based on schema
+    try:
+        properties = schema.get("properties", {})
+        mock_response = {}
+        
+        for prop_name, prop_schema in properties.items():
+            mock_response[prop_name] = generate_value_for_type(prop_schema, prop_name)
+        
+        return mock_response
+        
+    except Exception as e:
+        logger.error(f"Error generating mock response: {e}")
+        return {"error": f"Failed to generate mock response for schema: {schema_name}"}
 
-# Define the tool functions for each schema
-@mcp.tool()
-def get_product_info(product_name: str) -> Dict[str, Any]:
+def create_schema_tool(schema_name: str, schema_config: Dict[str, Any]) -> Callable:
     """
-    Get detailed information about a product.
+    Create a tool function for a given schema.
     
     Args:
-        product_name: Name of the product to get information about
-    
+        schema_name: Name of the schema
+        schema_config: Schema configuration including description and schema definition
+        
     Returns:
-        Product information in a structured format
+        A tool function that generates responses according to the schema
     """
-    logger.info(f"Generating product info for: {product_name}")
+    def schema_tool(query: str) -> Dict[str, Any]:
+        """
+        Generate structured response based on the schema.
+        
+        Args:
+            query: The input query or request
+            
+        Returns:
+            Structured response matching the schema
+        """
+        logger.info(f"Generating {schema_name} response for: {query}")
+        
+        # Use schema description to create a more specific prompt
+        schema_description = schema_config.get("description", f"information about {schema_name}")
+        prompt = f"Please provide {schema_description} based on this query: {query}"
+        
+        return invoke_claude(prompt, schema_name)
     
-    prompt = f"Please provide detailed information about {product_name}. Include the name, description, price, category, features, rating, and whether it's in stock."
-    return invoke_claude(prompt, "product_info")
-
-@mcp.tool()
-def get_person_profile(person_name: str) -> Dict[str, Any]:
-    """
-    Get profile information about a person.
+    # Set function metadata for MCP
+    schema_tool.__name__ = f"get_{schema_name}"
+    schema_tool.__doc__ = f"""
+    {schema_config.get('description', f'Get {schema_name} information')}.
     
     Args:
-        person_name: Name of the person to get profile for
+        query: The input query or request
     
     Returns:
-        Person profile information in a structured format
+        {schema_name} information in a structured format
     """
-    logger.info(f"Generating person profile for: {person_name}")
     
-    prompt = f"Please provide a profile for {person_name}. Include their name, age, occupation, skills, and contact information."
-    return invoke_claude(prompt, "person_profile")
+    return schema_tool
+
+def register_schema_tools():
+    """
+    Dynamically register tools for all loaded schemas.
+    """
+    for schema_name, schema_config in SCHEMAS.items():
+        tool_func = create_schema_tool(schema_name, schema_config)
+        
+        # Register the tool with MCP
+        mcp.tool()(tool_func)
+        logger.info(f"Registered tool: get_{schema_name}")
+
+# Register all schema tools
+register_schema_tools()
+
+# Add utility tools
+@mcp.tool()
+def list_available_schemas() -> Dict[str, Any]:
+    """
+    List all available schemas and their descriptions.
+    
+    Returns:
+        Dictionary containing all available schemas and their descriptions
+    """
+    logger.info("Listing available schemas")
+    
+    schemas_info = {}
+    for schema_name, schema_config in SCHEMAS.items():
+        schemas_info[schema_name] = {
+            "name": schema_name,
+            "description": schema_config.get("description", "No description available"),
+            "tool_name": f"get_{schema_name}"
+        }
+    
+    return {
+        "available_schemas": schemas_info,
+        "total_count": len(schemas_info)
+    }
 
 @mcp.tool()
-def get_api_endpoint(endpoint_name: str) -> Dict[str, Any]:
+def add_schema(schema_name: str, schema_definition: str, description: str = "", system_prompt: str = "") -> Dict[str, Any]:
     """
-    Get documentation for an API endpoint.
+    Add a new schema dynamically at runtime.
     
     Args:
-        endpoint_name: Name of the API endpoint to get documentation for
-    
+        schema_name: Name for the new schema
+        schema_definition: JSON schema definition as a string
+        description: Optional description of the schema
+        system_prompt: Optional custom system prompt for this schema
+        
     Returns:
-        API endpoint documentation in a structured format
+        Status of the schema addition
     """
-    logger.info(f"Generating API endpoint documentation for: {endpoint_name}")
+    logger.info(f"Adding new schema: {schema_name}")
     
-    prompt = f"Please provide documentation for the {endpoint_name} API endpoint. Include the path, HTTP method, description, parameters, and possible responses."
-    return invoke_claude(prompt, "api_endpoint")
-
-@mcp.tool()
-def get_troubleshooting_guide(issue: str) -> Dict[str, Any]:
-    """
-    Get a troubleshooting guide for a technical issue.
-    
-    Args:
-        issue: Description of the technical issue to troubleshoot
-    
-    Returns:
-        Troubleshooting guide in a structured format
-    """
-    logger.info(f"Generating troubleshooting guide for: {issue}")
-    
-    prompt = f"Please provide a troubleshooting guide for the following issue: {issue}. Include the issue description, symptoms, possible causes, step-by-step solutions, and prevention tips."
-    return invoke_claude(prompt, "troubleshooting_guide")
-
-@mcp.tool()
-def get_article_summary(topic: str) -> Dict[str, Any]:
-    """
-    Get a summary of an article or topic.
-    
-    Args:
-        topic: Topic or article title to summarize
-    
-    Returns:
-        Article summary in a structured format
-    """
-    logger.info(f"Generating article summary for: {topic}")
-    
-    prompt = f"Please provide a summary of an article about {topic}. Include the title, author, date, summary, key points, and conclusion."
-    return invoke_claude(prompt, "article_summary")
+    try:
+        # Parse the schema definition
+        schema_json = json.loads(schema_definition)
+        
+        # Create schema config
+        schema_config = {
+            "name": schema_name,
+            "description": description or f"Schema for {schema_name}",
+            "schema": schema_json
+        }
+        
+        if system_prompt:
+            schema_config["system_prompt"] = system_prompt
+        
+        # Add to global schemas
+        SCHEMAS[schema_name] = schema_config
+        
+        # Create and register the tool
+        tool_func = create_schema_tool(schema_name, schema_config)
+        mcp.tool()(tool_func)
+        
+        logger.info(f"Successfully added schema: {schema_name}")
+        
+        return {
+            "status": "success",
+            "message": f"Schema '{schema_name}' added successfully",
+            "tool_name": f"get_{schema_name}",
+            "schema_name": schema_name
+        }
+        
+    except json.JSONDecodeError as e:
+        error_msg = f"Invalid JSON schema definition: {e}"
+        logger.error(error_msg)
+        return {
+            "status": "error",
+            "message": error_msg
+        }
+    except Exception as e:
+        error_msg = f"Failed to add schema: {e}"
+        logger.error(error_msg)
+        return {
+            "status": "error",
+            "message": error_msg
+        }
 
 if __name__ == "__main__":
     # Initialize and run the server
-    logger.info("Starting Fixed Schema MCP Server using FastMCP with AWS Bedrock Claude 4 Sonnet")
+    logger.info("Starting Generic Schema MCP Server using FastMCP with AWS Bedrock Claude")
+    logger.info(f"Loaded {len(SCHEMAS)} schemas: {list(SCHEMAS.keys())}")
+    
+    if not SCHEMAS:
+        logger.warning("No schemas loaded! Server will start but no schema tools will be available.")
+        logger.info("You can add schemas dynamically using the 'add_schema' tool.")
+    
     mcp.run(transport='stdio')

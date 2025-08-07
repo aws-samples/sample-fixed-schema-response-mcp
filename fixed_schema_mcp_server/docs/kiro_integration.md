@@ -1,13 +1,13 @@
 # Kiro Integration Guide
 
-This guide explains how to integrate the Fixed Schema Response MCP Server with Kiro IDE.
+This guide explains how to integrate the Generic Schema MCP Server with Kiro IDE. This server dynamically loads JSON schemas and creates corresponding tools automatically.
 
 ## Prerequisites
 
 - Kiro IDE installed and running
 - `uv` package manager installed ([install guide](https://docs.astral.sh/uv/getting-started/installation/))
 - Python 3.10 or higher
-- Fixed Schema MCP Server downloaded/cloned
+- Generic Schema MCP Server downloaded/cloned
 
 ## Step-by-Step Setup
 
@@ -55,11 +55,15 @@ Add this configuration to your `.kiro/settings/mcp.json`:
       },
       "disabled": false,
       "autoApprove": [
-        "get_product_info",
-        "get_article_summary",
-        "get_person_profile",
         "get_api_endpoint",
-        "get_troubleshooting_guide"
+        "get_article_summary", 
+        "get_movie_review",
+        "get_person_profile",
+        "get_product_info",
+        "get_recipe",
+        "get_troubleshooting_guide",
+        "list_available_schemas",
+        "add_schema"
       ]
     }
   }
@@ -85,7 +89,7 @@ Once configured, you can use the tools directly in Kiro conversations:
 Get structured information about products with pricing, features, and availability:
 
 ```
-@fixed-schema get_product_info product_name: "MacBook Pro M3"
+@fixed-schema get_product_info query: "MacBook Pro M3"
 ```
 
 **Response format:**
@@ -105,7 +109,7 @@ Get structured information about products with pricing, features, and availabili
 Get structured biographical information about people:
 
 ```
-@fixed-schema get_person_profile person_name: "Tim Cook"
+@fixed-schema get_person_profile query: "Tim Cook"
 ```
 
 **Response format:**
@@ -126,7 +130,7 @@ Get structured biographical information about people:
 Get structured API endpoint documentation:
 
 ```
-@fixed-schema get_api_endpoint endpoint_name: "payment processing"
+@fixed-schema get_api_endpoint query: "payment processing API"
 ```
 
 **Response format:**
@@ -157,7 +161,7 @@ Get structured API endpoint documentation:
 Get step-by-step troubleshooting guides:
 
 ```
-@fixed-schema get_troubleshooting_guide issue: "Docker container won't start"
+@fixed-schema get_troubleshooting_guide query: "Docker container won't start"
 ```
 
 **Response format:**
@@ -199,7 +203,35 @@ Get step-by-step troubleshooting guides:
 Get structured summaries of articles or topics:
 
 ```
-@fixed-schema get_article_summary topic: "machine learning trends 2024"
+@fixed-schema get_article_summary query: "machine learning trends 2024"
+```
+
+### Cooking Recipes
+Get detailed cooking recipes with ingredients and instructions:
+
+```
+@fixed-schema get_recipe query: "chocolate chip cookies"
+```
+
+### Movie Reviews
+Get structured movie reviews and ratings:
+
+```
+@fixed-schema get_movie_review query: "The Matrix"
+```
+
+### Schema Discovery
+List all available schemas and their descriptions:
+
+```
+@fixed-schema list_available_schemas
+```
+
+### Runtime Schema Addition
+Add new schemas without restarting the server:
+
+```
+@fixed-schema add_schema schema_name: "book_review" schema_definition: "{\"type\": \"object\", \"properties\": {\"title\": {\"type\": \"string\"}, \"rating\": {\"type\": \"number\"}}, \"required\": [\"title\", \"rating\"]}" description: "Schema for book reviews"
 ```
 
 **Response format:**

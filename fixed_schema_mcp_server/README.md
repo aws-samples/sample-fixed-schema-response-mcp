@@ -1,15 +1,19 @@
-# Fixed Schema Response MCP Server (FastMCP Edition)
+# Generic Schema MCP Server (FastMCP Edition)
 
-A Model Context Protocol (MCP) server that processes user queries and returns responses in a fixed schema format (e.g., JSON) using FastMCP. This server constrains model responses to follow a predefined structure, making outputs more predictable and easier to parse programmatically.
+A Model Context Protocol (MCP) server that dynamically loads JSON schemas and generates structured responses using FastMCP. This server automatically creates tools for any JSON schema you provide, making it completely extensible without code changes. Simply add a schema file and get a corresponding tool instantly.
 
 ## Features
 
+- **🔄 Dynamic Schema Loading**: Automatically loads all `.json` files from `test_config/schemas/`
+- **🛠️ Automatic Tool Generation**: Each schema file becomes a tool named `get_{schema_name}`
+- **🎯 Custom System Prompts**: Each schema can include specialized AI behavior
+- **➕ Runtime Schema Addition**: Add new schemas without restarting using `add_schema` tool
+- **📋 Schema Discovery**: Built-in `list_available_schemas` tool for exploration
+- **🚀 Zero Code Changes**: Add unlimited schemas without touching the server code
 - **FastMCP Integration**: Built on the FastMCP framework for simplified MCP server development
-- **Schema-Based Responses**: Define JSON schemas to structure AI-generated content
-- **AWS Bedrock Integration**: Uses Claude 4 Sonnet for high-quality responses
+- **AWS Bedrock Integration**: Uses Claude for high-quality responses
 - **Fallback Mechanism**: Provides mock responses when AWS credentials are not available
 - **Kiro Integration**: Seamlessly works with Kiro as an MCP server
-- **Dynamic Schema Loading**: Automatically loads schemas from the test_config directory
 
 ## Installation
 
@@ -87,13 +91,33 @@ If AWS credentials are not configured, the server will fall back to mock respons
 
 The server automatically loads schemas from the `test_config/schemas` directory. The following schemas are included:
 
-- `product_info.json`: Schema for product information
-- `person_profile.json`: Schema for person profiles
 - `api_endpoint.json`: Schema for API endpoint documentation
-- `troubleshooting_guide.json`: Schema for troubleshooting guides
 - `article_summary.json`: Schema for article summaries
+- `movie_review.json`: Schema for movie reviews
+- `person_profile.json`: Schema for person profiles
+- `product_info.json`: Schema for product information
+- `recipe.json`: Schema for cooking recipes
+- `troubleshooting_guide.json`: Schema for troubleshooting guides
 
-You can modify these schemas or add new ones by creating JSON files in the `test_config/schemas` directory.
+**Adding New Schemas**: Simply create a new `.json` file in the `test_config/schemas` directory following this format:
+
+```json
+{
+  "name": "your_schema_name",
+  "description": "Description of what this schema represents",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "field1": {"type": "string"},
+      "field2": {"type": "number"}
+    },
+    "required": ["field1"]
+  },
+  "system_prompt": "Optional custom system prompt for specialized AI behavior"
+}
+```
+
+The tool `get_your_schema_name` will be automatically available after restarting the server!
 
 ### 3. Start the Server
 
@@ -119,11 +143,15 @@ The server is already configured for Kiro in `.kiro/settings/mcp.json`. The conf
       },
       "disabled": false,
       "autoApprove": [
-        "get_product_info",
-        "get_article_summary",
-        "get_person_profile",
         "get_api_endpoint",
-        "get_troubleshooting_guide"
+        "get_article_summary",
+        "get_movie_review",
+        "get_person_profile",
+        "get_product_info",
+        "get_recipe",
+        "get_troubleshooting_guide",
+        "list_available_schemas",
+        "add_schema"
       ]
     }
   }
@@ -134,22 +162,38 @@ The server is already configured for Kiro in `.kiro/settings/mcp.json`. The conf
 
 ## Using the MCP Tools
 
-The server provides the following MCP tools that can be used in Kiro:
+The server provides dynamically generated tools based on your schema files:
 
-1. `get_product_info`: Get detailed information about a product
-2. `get_person_profile`: Get profile information about a person
-3. `get_api_endpoint`: Get documentation for an API endpoint
-4. `get_troubleshooting_guide`: Get a troubleshooting guide for a technical issue
-5. `get_article_summary`: Get a summary of an article or topic
+**Schema-Based Tools** (automatically generated):
+1. `get_api_endpoint`: Get documentation for an API endpoint
+2. `get_article_summary`: Get a summary of an article or topic
+3. `get_movie_review`: Get movie reviews and ratings
+4. `get_person_profile`: Get profile information about a person
+5. `get_product_info`: Get detailed information about a product
+6. `get_recipe`: Get cooking recipes with ingredients and instructions
+7. `get_troubleshooting_guide`: Get a troubleshooting guide for a technical issue
+
+**Utility Tools**:
+- `list_available_schemas`: List all available schemas and their descriptions
+- `add_schema`: Add new schemas dynamically at runtime
 
 ### Example Usage in Kiro
 
+**Schema-based tools** (all accept a `query` parameter):
 ```
-@fixed-schema get_product_info product_name: "iPhone 15 Pro"
-@fixed-schema get_person_profile person_name: "Elon Musk"
-@fixed-schema get_api_endpoint endpoint_name: "user authentication"
-@fixed-schema get_troubleshooting_guide issue: "computer won't start"
-@fixed-schema get_article_summary topic: "artificial intelligence"
+@fixed-schema get_product_info query: "iPhone 15 Pro"
+@fixed-schema get_person_profile query: "Elon Musk"
+@fixed-schema get_api_endpoint query: "user authentication API"
+@fixed-schema get_troubleshooting_guide query: "computer won't start"
+@fixed-schema get_article_summary query: "artificial intelligence"
+@fixed-schema get_recipe query: "chocolate chip cookies"
+@fixed-schema get_movie_review query: "The Matrix"
+```
+
+**Utility tools**:
+```
+@fixed-schema list_available_schemas
+@fixed-schema add_schema schema_name: "book_review" schema_definition: "{...}" description: "Book reviews"
 ```
 
 ## Troubleshooting
@@ -224,17 +268,23 @@ If AWS Bedrock is not available, it falls back to generating mock responses that
 
 ## Testing
 
-You can test the server using the included test client:
+You can test the server using the included test scripts:
 
 ```bash
 cd fixed_schema_mcp_server
 
-# Test different tools
-uv run test_client.py --product "iPhone 15 Pro"
-uv run test_client.py --person "Elon Musk"
-uv run test_client.py --api "user authentication"
-uv run test_client.py --troubleshoot "computer won't start"
-uv run test_client.py --article "artificial intelligence"
+# Test the generic server functionality
+python test_generic_server.py
+
+# Test schema loading and tool generation
+python -c "
+import fastmcp_server
+print('Loaded schemas:', list(fastmcp_server.SCHEMAS.keys()))
+print('Total tools available:', len(fastmcp_server.SCHEMAS) + 2)  # +2 for utility tools
+"
+
+# Test individual tools (if you have a test client)
+# uv run test_client.py --query "iPhone 15 Pro" --schema "product_info"
 ```
 
 ## Deployment Options

@@ -1,13 +1,13 @@
 # Q Chat Integration Guide
 
-This guide explains how to integrate the Fixed Schema Response MCP Server with Q Chat.
+This guide explains how to integrate the Generic Schema MCP Server with Q Chat. This server dynamically loads JSON schemas and creates corresponding tools automatically.
 
 ## Prerequisites
 
 - Q Chat installed and configured
 - Python 3.10 or higher
 - `uv` package manager installed
-- Fixed Schema MCP Server set up
+- Generic Schema MCP Server set up
 
 ## Configuration
 
@@ -30,7 +30,7 @@ Q Chat's MCP configuration is typically located in one of these files:
 /path/to/qchat/config/mcp.json
 ```
 
-### Step 2: Add Fixed Schema MCP Server
+### Step 2: Add Generic Schema MCP Server
 
 Add the following configuration to Q Chat's MCP configuration file:
 
@@ -103,39 +103,63 @@ If Q Chat already has other MCP servers configured, your complete configuration 
 
 ## Usage in Q Chat
 
-Once configured, you can use the Fixed Schema MCP Server tools in your Q Chat conversations:
+Once configured, you can use the Generic Schema MCP Server tools in your Q Chat conversations:
 
 ### Available Tools
 
+**Schema-Based Tools** (dynamically generated):
+
 1. **Product Information**
    ```
-   @fixed-schema get_product_info product_name: "iPhone 15 Pro"
+   @fixed-schema get_product_info query: "iPhone 15 Pro"
    ```
 
 2. **Person Profiles**
    ```
-   @fixed-schema get_person_profile person_name: "Elon Musk"
+   @fixed-schema get_person_profile query: "Elon Musk"
    ```
 
 3. **API Documentation**
    ```
-   @fixed-schema get_api_endpoint endpoint_name: "user authentication"
+   @fixed-schema get_api_endpoint query: "user authentication API"
    ```
 
 4. **Troubleshooting Guides**
    ```
-   @fixed-schema get_troubleshooting_guide issue: "computer won't start"
+   @fixed-schema get_troubleshooting_guide query: "computer won't start"
    ```
 
 5. **Article Summaries**
    ```
-   @fixed-schema get_article_summary topic: "artificial intelligence"
+   @fixed-schema get_article_summary query: "artificial intelligence"
+   ```
+
+6. **Cooking Recipes**
+   ```
+   @fixed-schema get_recipe query: "chocolate chip cookies"
+   ```
+
+7. **Movie Reviews**
+   ```
+   @fixed-schema get_movie_review query: "The Matrix"
+   ```
+
+**Utility Tools**:
+
+8. **List Available Schemas**
+   ```
+   @fixed-schema list_available_schemas
+   ```
+
+9. **Add New Schema at Runtime**
+   ```
+   @fixed-schema add_schema schema_name: "book_review" schema_definition: "{...}" description: "Book reviews"
    ```
 
 ### Example Conversation
 
 ```
-You: @fixed-schema get_product_info product_name: "MacBook Pro M3"
+You: @fixed-schema get_product_info query: "MacBook Pro M3"
 
 Q Chat: {
   "name": "MacBook Pro M3",
@@ -215,7 +239,7 @@ Q Chat: {
    aws configure
    ```
 
-2. **Set environment variables:**
+2. Or **Set environment variables:**
    ```bash
    export AWS_ACCESS_KEY_ID=your_access_key
    export AWS_SECRET_ACCESS_KEY=your_secret_key
