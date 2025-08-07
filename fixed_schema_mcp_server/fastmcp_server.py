@@ -382,7 +382,10 @@ def list_available_schemas() -> Dict[str, Any]:
 @mcp.tool()
 def add_schema(schema_name: str, schema_definition: str, description: str = "", system_prompt: str = "") -> Dict[str, Any]:
     """
-    Add a new schema dynamically at runtime.
+    Add a new schema by creating a persistent schema file.
+    
+    This tool creates a schema file in the test_config/schemas directory.
+    The server must be restarted for the new schema to become available as a tool.
     
     Args:
         schema_name: Name for the new schema
@@ -393,10 +396,10 @@ def add_schema(schema_name: str, schema_definition: str, description: str = "", 
     Returns:
         Status of the schema addition
     """
-    logger.info(f"Adding new schema: {schema_name}")
+    logger.info(f"Creating schema file for: {schema_name}")
     
     try:
-        # Parse the schema definition
+        # Parse the schema definition to validate it
         schema_json = json.loads(schema_definition)
         
         # Create schema config
@@ -409,20 +412,27 @@ def add_schema(schema_name: str, schema_definition: str, description: str = "", 
         if system_prompt:
             schema_config["system_prompt"] = system_prompt
         
-        # Add to global schemas
-        SCHEMAS[schema_name] = schema_config
+        # Get the schemas directory path
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        schemas_dir = os.path.join(script_dir, "test_config", "schemas")
         
-        # Create and register the tool
-        tool_func = create_schema_tool(schema_name, schema_config)
-        mcp.tool()(tool_func)
+        # Ensure the schemas directory exists
+        os.makedirs(schemas_dir, exist_ok=True)
         
-        logger.info(f"Successfully added schema: {schema_name}")
+        # Write the schema file
+        schema_file_path = os.path.join(schemas_dir, f"{schema_name}.json")
+        with open(schema_file_path, 'w') as f:
+            json.dump(schema_config, f, indent=2)
+        
+        logger.info(f"Successfully created schema file: {schema_file_path}")
         
         return {
             "status": "success",
-            "message": f"Schema '{schema_name}' added successfully",
+            "message": f"Schema '{schema_name}' file created successfully. Restart the MCP server to make the 'get_{schema_name}' tool available.",
             "tool_name": f"get_{schema_name}",
-            "schema_name": schema_name
+            "schema_name": schema_name,
+            "file_path": schema_file_path,
+            "restart_required": True
         }
         
     except json.JSONDecodeError as e:
@@ -433,7 +443,7 @@ def add_schema(schema_name: str, schema_definition: str, description: str = "", 
             "message": error_msg
         }
     except Exception as e:
-        error_msg = f"Failed to add schema: {e}"
+        error_msg = f"Failed to create schema file: {e}"
         logger.error(error_msg)
         return {
             "status": "error",
