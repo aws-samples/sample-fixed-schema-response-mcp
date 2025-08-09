@@ -105,51 +105,72 @@ If Q Chat already has other MCP servers configured, your complete configuration 
 
 Once configured, you can use the Generic Schema MCP Server tools in your Q Chat conversations:
 
+### Quick Test Examples
+
+Test the server with these simple commands:
+
+```
+@fixed-schema list_available_schemas
+@fixed-schema get_weather_report query: "Weather in San Francisco"
+@fixed-schema get_product_info query: "iPhone 15 Pro"
+@fixed-schema get_recipe query: "chocolate chip cookies"
+```
+
 ### Available Tools
 
 **Schema-Based Tools** (dynamically generated):
 
-1. **Product Information**
+1. **Weather Reports**
+   ```
+   @fixed-schema get_weather_report query: "Weather in San Francisco"
+   ```
+
+2. **Product Information**
    ```
    @fixed-schema get_product_info query: "iPhone 15 Pro"
    ```
 
-2. **Person Profiles**
-   ```
-   @fixed-schema get_person_profile query: "Elon Musk"
-   ```
-
-3. **API Documentation**
-   ```
-   @fixed-schema get_api_endpoint query: "user authentication API"
-   ```
-
-4. **Troubleshooting Guides**
-   ```
-   @fixed-schema get_troubleshooting_guide query: "computer won't start"
-   ```
-
-5. **Article Summaries**
-   ```
-   @fixed-schema get_article_summary query: "artificial intelligence"
-   ```
-
-6. **Cooking Recipes**
+3. **Cooking Recipes**
    ```
    @fixed-schema get_recipe query: "chocolate chip cookies"
    ```
 
-7. **Movie Reviews**
+4. **Person Profiles**
+   ```
+   @fixed-schema get_person_profile query: "Elon Musk"
+   ```
+
+5. **API Documentation**
+   ```
+   @fixed-schema get_api_endpoint query: "user authentication API"
+   ```
+
+6. **Troubleshooting Guides**
+   ```
+   @fixed-schema get_troubleshooting_guide query: "computer won't start"
+   ```
+
+7. **Article Summaries**
+   ```
+   @fixed-schema get_article_summary query: "artificial intelligence"
+   ```
+
+8. **Movie Reviews**
    ```
    @fixed-schema get_movie_review query: "The Matrix"
    ```
 
 **Utility Tools**:
 
-8. **List Available Schemas**
+9. **List Available Schemas**
    ```
    @fixed-schema list_available_schemas
    ```
+
+10. **Add Custom Schemas**
+    ```
+    @fixed-schema add_schema schema_name: "my_custom_schema" schema_definition: "{...}" description: "My custom schema"
+    ```
 
 
 

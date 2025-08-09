@@ -34,14 +34,13 @@ A Model Context Protocol (MCP) server that dynamically loads JSON schemas and ge
 # Test the server is working
 @fixed-schema list_available_schemas
 
-# Check configuration
-@fixed-schema get_model_config
-
-# Try a schema tool
+# Try schema tools
 @fixed-schema get_weather_report query="Weather in Tokyo"
+@fixed-schema get_product_info query="iPhone 15 Pro"
+@fixed-schema get_recipe query="chocolate chip cookies"
 
-# Switch providers (if configured)
-@fixed-schema update_model_config provider="openai" model_id="gpt-4o"
+# Add custom schemas
+@fixed-schema add_schema schema_name="my_custom_schema" schema_definition="{...}" description="My custom schema"
 ```
 
 ## Installation
@@ -210,12 +209,13 @@ The server provides dynamically generated tools based on your schema files:
 
 **Schema-based tools** (all accept a `query` parameter):
 ```
+@fixed-schema get_weather_report query: "Weather in San Francisco"
 @fixed-schema get_product_info query: "iPhone 15 Pro"
+@fixed-schema get_recipe query: "chocolate chip cookies"
 @fixed-schema get_person_profile query: "Elon Musk"
 @fixed-schema get_api_endpoint query: "user authentication API"
 @fixed-schema get_troubleshooting_guide query: "computer won't start"
 @fixed-schema get_article_summary query: "artificial intelligence"
-@fixed-schema get_recipe query: "chocolate chip cookies"
 @fixed-schema get_movie_review query: "The Matrix"
 ```
 

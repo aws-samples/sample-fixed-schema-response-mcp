@@ -47,17 +47,31 @@ Each schema file should follow this structure:
 }
 ```
 
+## Quick Test Examples
+
+Test the server with these simple commands:
+```
+@fixed-schema list_available_schemas
+@fixed-schema get_weather_report query: "Weather in San Francisco"
+@fixed-schema get_product_info query: "iPhone 15 Pro"
+@fixed-schema get_recipe query: "chocolate chip cookies"
+```
+
 ## Available Tools
 
 ### Schema-Based Tools
 For each schema file `{name}.json`, a tool `get_{name}` is automatically created:
 
+- `get_weather_report(query: str)` - Weather information and forecasts
 - `get_product_info(query: str)` - Product information
+- `get_recipe(query: str)` - Cooking recipes
 - `get_person_profile(query: str)` - Person profiles  
 - `get_api_endpoint(query: str)` - API documentation
 - `get_troubleshooting_guide(query: str)` - Technical troubleshooting
 - `get_article_summary(query: str)` - Article summaries
-- `get_recipe(query: str)` - Cooking recipes
+- `get_movie_review(query: str)` - Movie reviews and ratings
+- `get_book_review(query: str)` - Book reviews and analysis
+- `get_sports_stats(query: str)` - Sports statistics and player information
 
 ### Utility Tools
 - `list_available_schemas()` - List all loaded schemas and their descriptions

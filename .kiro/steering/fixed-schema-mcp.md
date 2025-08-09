@@ -75,20 +75,30 @@ The Generic Schema MCP Server provides the following dynamically generated tools
 - Creates persistent .json files in test_config/schemas/
 - Example: `@fixed-schema add_schema schema_name: "news_article" schema_definition: "{...}" description: "News article analysis" system_prompt: "You are a journalist..."`
 
+## Quick Test Examples
+
+Test the server with these simple commands:
+```
+@fixed-schema list_available_schemas
+@fixed-schema get_weather_report query: "Weather in San Francisco"
+@fixed-schema get_product_info query: "iPhone 15 Pro"
+@fixed-schema get_recipe query: "chocolate chip cookies"
+```
+
 ## Usage Examples
 
 **Schema-based tools** (all accept a `query` parameter):
 ```
+@fixed-schema get_weather_report query: "New York City current weather"
+@fixed-schema get_product_info query: "MacBook Pro M3"
+@fixed-schema get_recipe query: "chocolate chip cookies"
 @fixed-schema get_api_endpoint query: "payment processing API"
 @fixed-schema get_article_summary query: "quantum computing trends"
 @fixed-schema get_book_review query: "1984 by George Orwell"
 @fixed-schema get_movie_review query: "The Matrix"
 @fixed-schema get_person_profile query: "Ada Lovelace"
-@fixed-schema get_product_info query: "MacBook Pro M3"
-@fixed-schema get_recipe query: "chocolate chip cookies"
 @fixed-schema get_sports_stats query: "LeBron James 2023 season"
 @fixed-schema get_troubleshooting_guide query: "Docker container not starting"
-@fixed-schema get_weather_report query: "New York City current weather"
 ```
 
 **Utility tools**:

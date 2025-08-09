@@ -85,6 +85,17 @@ After saving the configuration:
 
 Once configured, you can use the tools directly in Kiro conversations:
 
+### Quick Test Examples
+
+Test the server with these simple commands:
+
+```
+@fixed-schema list_available_schemas
+@fixed-schema get_weather_report query: "Weather in San Francisco"
+@fixed-schema get_product_info query: "iPhone 15 Pro"
+@fixed-schema get_recipe query: "chocolate chip cookies"
+```
+
 ### Product Information
 Get structured information about products with pricing, features, and availability:
 

@@ -16,14 +16,15 @@
       "disabled": false,
       "autoApprove": [
         "list_available_schemas",
-        "get_model_config",
-        "update_model_config",
+        "add_schema",
         "get_troubleshooting_guide",
         "get_recipe",
         "get_movie_review",
         "get_weather_report",
         "get_product_info",
-        "add_schema"
+        "get_book_review",
+        "get_article_summary",
+        "get_person_profile"
       ]
     },
     "aws-docs": {

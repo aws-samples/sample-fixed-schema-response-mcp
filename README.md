@@ -38,18 +38,16 @@ A Model Context Protocol (MCP) server that dynamically loads JSON schemas and ge
 3. **Test the server**:
    ```
    @fixed-schema list_available_schemas
-   @fixed-schema get_model_config
    @fixed-schema get_weather_report query: "Weather in San Francisco"
+   @fixed-schema get_product_info query: "iPhone 15 Pro"
+   @fixed-schema get_recipe query: "chocolate chip cookies"
    ```
    
    The server automatically detects your local AWS credentials and API keys!
 
-4. **Switch providers and use schemas**:
+4. **Add custom schemas**:
    ```
-   @fixed-schema update_model_config provider="openai" model_id="gpt-4o"
-   @fixed-schema get_product_info query: "iPhone 15 Pro"
-   @fixed-schema get_recipe query: "chocolate chip cookies"
-   @fixed-schema get_troubleshooting_guide query: "WiFi connection issues"
+   @fixed-schema add_schema schema_name="my_custom_schema" schema_definition="{...}" description="My custom schema"
    ```
 
 ## Key Features
@@ -60,7 +58,7 @@ A Model Context Protocol (MCP) server that dynamically loads JSON schemas and ge
 - **📋 Schema Discovery**: Built-in tools to list and explore available schemas
 - **🤖 Multi-Provider Support**: AWS Bedrock, OpenAI, Anthropic, or Mock responses
 - **🔑 Flexible Credentials**: Reads from local environment or MCP config
-- **⚙️ Runtime Configuration**: Update model settings and credentials without code changes
+- **🎯 Focused Purpose**: Generate structured responses and manage schemas
 
 ## Integration Guides
 
@@ -81,7 +79,7 @@ For complete documentation, see: [`fixed_schema_mcp_server/README.md`](fixed_sch
 - **Smart Credential Loading**: Reads from local environment variables or MCP config
 - **Graceful Fallback**: Automatic fallback to mock responses when providers unavailable
 - **File-Driven**: All schemas loaded from JSON files in `test_config/schemas/`
-- **Runtime Configuration**: Update settings via MCP tools without server code changes
+- **Simple & Focused**: Core functionality only - no complex configuration tools
 
 ## Current Available Tools (12 Schema-Based Tools)
 
@@ -99,10 +97,8 @@ For complete documentation, see: [`fixed_schema_mcp_server/README.md`](fixed_sch
 11. `get_weather_report`: Weather report information
 12. `get_test@schema`: Test schema with special characters
 
-**Configuration Tools**:
+**Core Tools**:
 - `list_available_schemas`: Discover all available schema tools
-- `get_model_config`: View current model configuration and credentials
-- `update_model_config`: Switch between AI providers and models
 - `add_schema`: Add new schemas dynamically
 4. `get_person_profile`: Person profiles
 5. `get_product_info`: Product information
