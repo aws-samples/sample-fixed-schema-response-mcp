@@ -227,28 +227,7 @@ List all available schemas and their descriptions:
 @fixed-schema list_available_schemas
 ```
 
-### Runtime Schema Addition
-Add new schemas without restarting the server:
 
-```
-@fixed-schema add_schema schema_name: "book_review" schema_definition: "{\"type\": \"object\", \"properties\": {\"title\": {\"type\": \"string\"}, \"rating\": {\"type\": \"number\"}}, \"required\": [\"title\", \"rating\"]}" description: "Schema for book reviews"
-```
-
-**Response format:**
-```json
-{
-  "title": "Machine Learning Trends 2024",
-  "author": "AI Assistant",
-  "date": "2024-07-24",
-  "summary": "Overview of key machine learning developments in 2024...",
-  "keyPoints": [
-    "Large Language Models continue to evolve",
-    "Edge AI deployment increases",
-    "Multimodal AI becomes mainstream"
-  ],
-  "conclusion": "2024 marks a significant year for practical AI applications"
-}
-```
 
 ## Kiro-Specific Features
 

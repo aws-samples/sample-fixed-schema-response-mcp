@@ -19,9 +19,7 @@ The MCP server has been refactored to be completely generic and schema-driven. I
 - Allows fine-tuning Claude's behavior for specific domains
 - Falls back to generic prompt if not specified
 
-### ➕ Runtime Schema Addition
-- Use the `add_schema` tool to add new schemas without restarting
-- Useful for testing or dynamic schema management
+
 
 ## Schema File Format
 
@@ -72,8 +70,8 @@ For each schema file `{name}.json`, a tool `get_{name}` is automatically created
 2. Follow the schema file format above
 3. Restart the server to load the new schema
 
-### Method 2: Runtime Addition
-Use the `add_schema` tool:
+### Method 2: Runtime Addition (Requires Restart)
+Use the `add_schema` tool to create schema files:
 
 ```python
 add_schema(
@@ -83,6 +81,8 @@ add_schema(
     system_prompt="You are a literary critic providing book reviews."
 )
 ```
+
+**Note**: After using `add_schema`, you must restart the server for the new tool to become available.
 
 ## Example Usage
 

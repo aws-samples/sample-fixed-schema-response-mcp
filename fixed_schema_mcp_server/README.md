@@ -7,13 +7,42 @@ A Model Context Protocol (MCP) server that dynamically loads JSON schemas and ge
 - **🔄 Dynamic Schema Loading**: Automatically loads all `.json` files from `test_config/schemas/`
 - **🛠️ Automatic Tool Generation**: Each schema file becomes a tool named `get_{schema_name}`
 - **🎯 Custom System Prompts**: Each schema can include specialized AI behavior
-- **➕ Runtime Schema Addition**: Add new schemas without restarting using `add_schema` tool
+- **🤖 Multi-Provider Support**: AWS Bedrock, OpenAI, Anthropic, or Mock responses
+- **⚙️ MCP Configuration**: Set credentials directly in MCP settings
 - **📋 Schema Discovery**: Built-in `list_available_schemas` tool for exploration
 - **🚀 Zero Code Changes**: Add unlimited schemas without touching the server code
 - **FastMCP Integration**: Built on the FastMCP framework for simplified MCP server development
-- **AWS Bedrock Integration**: Uses Claude for high-quality responses
-- **Fallback Mechanism**: Provides mock responses when AWS credentials are not available
+- **Graceful Fallback**: Automatic fallback to mock responses when providers unavailable
 - **Kiro Integration**: Seamlessly works with Kiro as an MCP server
+
+## Current Status: ✅ Fully Operational
+
+**12 Schema Tools Available** (tested and working):
+- API documentation, recipes, weather reports, product info, troubleshooting guides
+- Movie/book reviews, sports stats, person profiles, article summaries
+- User profiles and test schemas
+
+**Multi-Provider AI Support**:
+- AWS Bedrock (4 models) - ✅ Tested with AWS profile
+- OpenAI (4 models) - Ready for API key
+- Anthropic (3 models) - Ready for API key
+- Mock responses - Always available
+
+## Quick Test
+
+```bash
+# Test the server is working
+@fixed-schema list_available_schemas
+
+# Check configuration
+@fixed-schema get_model_config
+
+# Try a schema tool
+@fixed-schema get_weather_report query="Weather in Tokyo"
+
+# Switch providers (if configured)
+@fixed-schema update_model_config provider="openai" model_id="gpt-4o"
+```
 
 ## Installation
 
@@ -175,7 +204,7 @@ The server provides dynamically generated tools based on your schema files:
 
 **Utility Tools**:
 - `list_available_schemas`: List all available schemas and their descriptions
-- `add_schema`: Add new schemas dynamically at runtime
+- `add_schema`: Create new schema files (requires server restart)
 
 ### Example Usage in Kiro
 

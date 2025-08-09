@@ -1,0 +1,15 @@
+{
+  "name": "user_profile_test",
+  "description": "Test schema for user profile",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string"
+      },
+      "age": {
+        "type": "number"
+      }
+    }
+  }
+}

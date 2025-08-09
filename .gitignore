@@ -154,7 +154,7 @@ venv.bak/
 
 # Kiro IDE files (internal development files)
 .kiro/specs/
-.kiro/steering/
+# .kiro/steering/
 # temp
 temp-stuff
 temp-stuff/*

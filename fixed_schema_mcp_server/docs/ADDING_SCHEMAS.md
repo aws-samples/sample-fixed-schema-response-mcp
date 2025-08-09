@@ -461,9 +461,9 @@ Use `oneOf`, `anyOf`, or `allOf` for complex validation:
 }
 ```
 
-### Runtime Schema Addition
+### Schema Addition via Tool
 
-You can also add schemas at runtime without restarting:
+You can also add schemas using the `add_schema` tool (requires restart):
 
 ```
 @fixed-schema add_schema schema_name: "weather_report" schema_definition: "{\"type\": \"object\", \"properties\": {\"location\": {\"type\": \"string\"}, \"temperature\": {\"type\": \"number\"}, \"conditions\": {\"type\": \"string\"}}, \"required\": [\"location\", \"temperature\", \"conditions\"]}" description: "Weather report information"

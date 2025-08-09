@@ -9,14 +9,20 @@
         "fastmcp_server.py"
       ],
       "env": {
-        "FASTMCP_LOG_LEVEL": "DEBUG"
+        "FASTMCP_LOG_LEVEL": "INFO",
+        "AWS_PROFILE": "default",
+        "AWS_REGION": "us-west-2"
       },
       "disabled": false,
       "autoApprove": [
+        "list_available_schemas",
+        "get_model_config",
+        "update_model_config",
         "get_troubleshooting_guide",
         "get_recipe",
         "get_movie_review",
-        "list_available_schemas",
+        "get_weather_report",
+        "get_product_info",
         "add_schema"
       ]
     },
@@ -24,17 +30,6 @@
       "command": "/opt/homebrew/bin/uvx",
       "args": [
         "awslabs.aws-documentation-mcp-server@latest"
-      ],
-      "env": {
-        "FASTMCP_LOG_LEVEL": "ERROR"
-      },
-      "disabled": false,
-      "autoApprove": []
-    },
-    "cdk-mcp": {
-      "command": "/opt/homebrew/bin/uvx",
-      "args": [
-        "awslabs.cdk-mcp-server@latest"
       ],
       "env": {
         "FASTMCP_LOG_LEVEL": "ERROR"

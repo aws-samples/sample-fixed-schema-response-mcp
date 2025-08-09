@@ -151,10 +151,7 @@ Once configured, you can use the Generic Schema MCP Server tools in your Q Chat 
    @fixed-schema list_available_schemas
    ```
 
-9. **Add New Schema at Runtime**
-   ```
-   @fixed-schema add_schema schema_name: "book_review" schema_definition: "{...}" description: "Book reviews"
-   ```
+
 
 ### Example Conversation
 
