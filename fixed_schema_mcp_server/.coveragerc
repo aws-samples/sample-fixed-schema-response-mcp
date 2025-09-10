@@ -1,0 +1,19 @@
+[run]
+source = fixed_schema_mcp_server
+omit = 
+    */tests/*
+    */venv/*
+    */setup.py
+    */__init__.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError
+
+[html]
+directory = coverage_html_report

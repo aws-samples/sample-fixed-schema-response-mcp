@@ -1,0 +1,31 @@
+{
+  "name": "article_summary",
+  "description": "Schema for article summary responses",
+  "schema": {
+    "type": "object",
+    "required": ["title", "summary", "key_points"],
+    "properties": {
+      "title": {
+        "type": "string",
+        "description": "The title of the article"
+      },
+      "summary": {
+        "type": "string",
+        "description": "A concise summary of the article content"
+      },
+      "key_points": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "List of key points from the article"
+      },
+      "sentiment": {
+        "type": "string",
+        "enum": ["positive", "neutral", "negative"],
+        "description": "The overall sentiment of the article"
+      }
+    }
+  },
+  "system_prompt": "You are an article summarization assistant. Provide concise summaries of articles in a structured format."
+}

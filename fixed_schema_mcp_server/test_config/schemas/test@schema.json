@@ -1,0 +1,12 @@
+{
+  "name": "test@schema",
+  "description": "Test invalid characters",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "test": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "name": "weather_report",
+  "description": "Schema for weather report information",
+  "schema": {
+    "type": "object",
+    "required": ["location", "temperature", "conditions"],
+    "properties": {
+      "location": {
+        "type": "string",
+        "description": "The location for the weather report"
+      },
+      "temperature": {
+        "type": "number",
+        "description": "Temperature in Fahrenheit"
+      },
+      "conditions": {
+        "type": "string",
+        "description": "Current weather conditions"
+      },
+      "humidity": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100,
+        "description": "Humidity percentage"
+      },
+      "wind_speed": {
+        "type": "number",
+        "description": "Wind speed in mph"
+      },
+      "forecast": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "day": {"type": "string"},
+            "high": {"type": "number"},
+            "low": {"type": "number"},
+            "conditions": {"type": "string"}
+          }
+        },
+        "description": "3-day forecast"
+      }
+    }
+  },
+  "system_prompt": "You are a professional meteorologist. Provide accurate weather information with current conditions and forecasts. Include temperature, humidity, wind conditions, and a 3-day outlook."
+}
