@@ -1,0 +1,79 @@
+{
+  "name": "person_profile",
+  "description": "Schema for structured information about a person",
+  "schema": {
+    "type": "object",
+    "required": ["name", "bio", "expertise"],
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "The full name of the person"
+      },
+      "bio": {
+        "type": "string",
+        "description": "A concise biography of the person"
+      },
+      "expertise": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Areas of expertise or specialization"
+      },
+      "achievements": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Notable achievements or contributions"
+      },
+      "education": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "degree": {
+              "type": "string",
+              "description": "Degree or certification obtained"
+            },
+            "institution": {
+              "type": "string",
+              "description": "Educational institution attended"
+            },
+            "year": {
+              "type": "number",
+              "description": "Year of completion"
+            }
+          }
+        },
+        "description": "Educational background"
+      },
+      "career": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "position": {
+              "type": "string",
+              "description": "Job title or position"
+            },
+            "organization": {
+              "type": "string",
+              "description": "Company or organization"
+            },
+            "period": {
+              "type": "string",
+              "description": "Time period of employment"
+            }
+          }
+        },
+        "description": "Career history"
+      },
+      "impact": {
+        "type": "string",
+        "description": "Summary of the person's impact or influence in their field"
+      }
+    }
+  },
+  "system_prompt": "You are a professional biographer. Provide accurate and concise information about people in a structured format. Focus on factual information and avoid speculation or subjective opinions."
+}

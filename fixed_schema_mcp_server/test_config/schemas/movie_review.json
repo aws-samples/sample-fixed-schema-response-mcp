@@ -1,0 +1,53 @@
+{
+  "name": "movie_review",
+  "description": "Schema for movie review information",
+  "schema": {
+    "type": "object",
+    "required": ["title", "rating", "review"],
+    "properties": {
+      "title": {
+        "type": "string",
+        "description": "The title of the movie"
+      },
+      "director": {
+        "type": "string", 
+        "description": "The director of the movie"
+      },
+      "year": {
+        "type": "integer",
+        "description": "Release year of the movie"
+      },
+      "genre": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "Movie genres"
+      },
+      "rating": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 10,
+        "description": "Rating out of 10"
+      },
+      "review": {
+        "type": "string",
+        "description": "Detailed review text"
+      },
+      "pros": {
+        "type": "array",
+        "items": {"type": "string"},
+        "description": "Positive aspects of the movie"
+      },
+      "cons": {
+        "type": "array", 
+        "items": {"type": "string"},
+        "description": "Negative aspects of the movie"
+      },
+      "recommendation": {
+        "type": "string",
+        "enum": ["highly_recommended", "recommended", "neutral", "not_recommended"],
+        "description": "Overall recommendation"
+      }
+    }
+  },
+  "system_prompt": "You are a professional movie critic with expertise in cinema. Provide thoughtful, balanced movie reviews that consider plot, acting, direction, cinematography, and overall entertainment value."
+}

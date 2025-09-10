@@ -1,0 +1,12 @@
+{
+  "name": "../../../malicious",
+  "description": "Test path traversal protection",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "test": {
+        "type": "string"
+      }
+    }
+  }
+}

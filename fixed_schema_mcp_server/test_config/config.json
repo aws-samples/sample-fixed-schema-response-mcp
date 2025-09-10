@@ -1,0 +1,85 @@
+{
+    "server": {
+        "host": "localhost",
+        "port": 8081,
+        "log_level": "info"
+    },
+    "security": {
+        "max_schema_name_length": 50,
+        "max_system_prompt_length": 2000,
+        "max_query_length": 5000,
+        "max_response_size": 100000,
+        "rate_limit_per_minute": 60,
+        "allowed_schema_extensions": [
+            ".json"
+        ],
+        "enable_request_logging": false,
+        "enable_response_logging": false,
+        "reserved_schema_names": [
+            "admin",
+            "system",
+            "config",
+            "test",
+            "debug"
+        ]
+    },
+    "model": {
+        "provider": "aws_bedrock",
+        "model_id": "test-model",
+        "parameters": {
+            "temperature": 0.3,
+            "top_p": 0.9,
+            "max_tokens": 4096
+        },
+        "credentials": {
+            "aws_region": "us-west-2",
+            "aws_access_key_id": "",
+            "aws_secret_access_key": "",
+            "aws_session_token": "",
+            "profile_name": ""
+        },
+        "openai": {
+            "api_key": "",
+            "base_url": "https://api.openai.com/v1",
+            "organization": ""
+        },
+        "anthropic": {
+            "api_key": ""
+        },
+        "available_providers": {
+            "aws_bedrock": {
+                "models": [
+                    "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+                    "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+                    "us.anthropic.claude-3-haiku-20240307-v1:0",
+                    "amazon.titan-text-premier-v1:0"
+                ]
+            },
+            "openai": {
+                "models": [
+                    "gpt-4o",
+                    "gpt-4o-mini",
+                    "gpt-4-turbo",
+                    "gpt-3.5-turbo"
+                ]
+            },
+            "anthropic": {
+                "models": [
+                    "claude-3-5-sonnet-20241022",
+                    "claude-3-5-haiku-20241022",
+                    "claude-3-opus-20240229"
+                ]
+            },
+            "mock": {
+                "models": [
+                    "mock-claude-3-5-sonnet",
+                    "mock-gpt-4o"
+                ]
+            }
+        }
+    },
+    "schemas": {
+        "path": "/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server/test_config/schemas",
+        "default_schema": "product_info"
+    }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "book_review",
+  "description": "Schema for book review information",
+  "schema": {
+    "type": "object",
+    "required": ["title", "rating", "review"],
+    "properties": {
+      "title": {
+        "type": "string",
+        "description": "The title of the book"
+      },
+      "author": {
+        "type": "string",
+        "description": "The author of the book"
+      },
+      "rating": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 5,
+        "description": "Rating from 1 to 5 stars"
+      },
+      "review": {
+        "type": "string",
+        "description": "Detailed review of the book"
+      },
+      "genres": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "List of genres"
+      },
+      "recommended": {
+        "type": "boolean",
+        "description": "Whether the book is recommended"
+      }
+    }
+  },
+  "system_prompt": "You are a professional book critic with expertise in literature. Provide thoughtful, balanced book reviews that consider plot, character development, writing style, and overall literary merit."
+}

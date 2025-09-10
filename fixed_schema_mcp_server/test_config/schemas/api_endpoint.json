@@ -1,0 +1,142 @@
+{
+  "name": "api_endpoint",
+  "description": "Schema for API endpoint documentation",
+  "schema": {
+    "type": "object",
+    "required": ["endpoint", "method", "description", "parameters", "responses"],
+    "properties": {
+      "endpoint": {
+        "type": "string",
+        "description": "The API endpoint path"
+      },
+      "method": {
+        "type": "string",
+        "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"],
+        "description": "The HTTP method for this endpoint"
+      },
+      "description": {
+        "type": "string",
+        "description": "A description of what the endpoint does"
+      },
+      "parameters": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Parameter name"
+            },
+            "type": {
+              "type": "string",
+              "description": "Data type of the parameter"
+            },
+            "required": {
+              "type": "boolean",
+              "description": "Whether the parameter is required"
+            },
+            "description": {
+              "type": "string",
+              "description": "Description of the parameter"
+            },
+            "location": {
+              "type": "string",
+              "enum": ["path", "query", "header", "body"],
+              "description": "Where the parameter is located in the request"
+            }
+          },
+          "required": ["name", "type", "required", "description", "location"]
+        },
+        "description": "Parameters accepted by the endpoint"
+      },
+      "request_body": {
+        "type": "object",
+        "properties": {
+          "content_type": {
+            "type": "string",
+            "description": "Content type of the request body"
+          },
+          "schema": {
+            "type": "object",
+            "description": "Schema of the request body"
+          }
+        },
+        "description": "Request body specification"
+      },
+      "responses": {
+        "type": "object",
+        "properties": {
+          "200": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "description": "Description of the 200 response"
+              },
+              "schema": {
+                "type": "object",
+                "description": "Schema of the 200 response"
+              }
+            }
+          },
+          "400": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "description": "Description of the 400 response"
+              }
+            }
+          },
+          "401": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "description": "Description of the 401 response"
+              }
+            }
+          },
+          "404": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "description": "Description of the 404 response"
+              }
+            }
+          },
+          "500": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "description": "Description of the 500 response"
+              }
+            }
+          }
+        },
+        "description": "Possible responses from the endpoint"
+      },
+      "authentication": {
+        "type": "string",
+        "description": "Authentication requirements for the endpoint"
+      },
+      "example": {
+        "type": "object",
+        "properties": {
+          "request": {
+            "type": "string",
+            "description": "Example request"
+          },
+          "response": {
+            "type": "string",
+            "description": "Example response"
+          }
+        },
+        "description": "Example usage of the endpoint"
+      }
+    }
+  },
+  "system_prompt": "You are an API documentation specialist. Provide clear, accurate, and comprehensive documentation for API endpoints in a structured format. Include all necessary details for developers to understand and use the endpoint correctly."
+}

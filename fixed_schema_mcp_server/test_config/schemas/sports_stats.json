@@ -1,0 +1,60 @@
+{
+  "name": "sports_stats",
+  "description": "Schema for sports statistics information",
+  "schema": {
+    "type": "object",
+    "required": [
+      "player_name",
+      "sport",
+      "season"
+    ],
+    "properties": {
+      "player_name": {
+        "type": "string",
+        "description": "Name of the player"
+      },
+      "sport": {
+        "type": "string",
+        "description": "Sport being played"
+      },
+      "season": {
+        "type": "string",
+        "description": "Season or year"
+      },
+      "team": {
+        "type": "string",
+        "description": "Current team"
+      },
+      "position": {
+        "type": "string",
+        "description": "Player position"
+      },
+      "stats": {
+        "type": "object",
+        "properties": {
+          "games_played": {
+            "type": "number"
+          },
+          "points": {
+            "type": "number"
+          },
+          "assists": {
+            "type": "number"
+          },
+          "rebounds": {
+            "type": "number"
+          }
+        },
+        "description": "Player statistics"
+      },
+      "achievements": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Notable achievements"
+      }
+    }
+  },
+  "system_prompt": "You are a sports analyst with expertise in statistics. Provide comprehensive sports statistics and analysis with accurate data and insights."
+}
