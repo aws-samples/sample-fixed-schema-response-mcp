@@ -14,7 +14,7 @@ and creates corresponding tools for structured response generation using AWS Bed
 #     "openai>=1.0.0",
 #     "anthropic>=0.25.0",
 # ]
-# requires-python = ">=3.10"
+# requires-python = ">=3.12"
 # ///
 
 import json
@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Callable, Optional
 from functools import partial
 
 from mcp.server.fastmcp import FastMCP
-from security_config import SecurityValidator, get_secure_config_defaults
+from .security_config import SecurityValidator, get_secure_config_defaults
 
 # Security constants
 MAX_SCHEMA_NAME_LENGTH = 50
@@ -53,7 +53,7 @@ anthropic_client = None
 
 def load_schemas(schemas_dir: str = None) -> Dict[str, Dict[str, Any]]:
     """
-    Load schemas from the specified directory or default test_config directory.
+    Load schemas from the specified directory or default config directory.
     
     Args:
         schemas_dir: Optional path to schemas directory. If None, uses default.
@@ -63,10 +63,17 @@ def load_schemas(schemas_dir: str = None) -> Dict[str, Dict[str, Any]]:
     """
     schemas = {}
     
+    # Get the default directory path
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    default_schemas_dir = os.path.join(script_dir, "config", "schemas")
+    
+    # Use provided path if it exists, otherwise fall back to default
     if schemas_dir is None:
-        # Get the directory of this script
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        schemas_dir = os.path.join(script_dir, "test_config", "schemas")
+        schemas_dir = default_schemas_dir
+    elif not os.path.exists(schemas_dir):
+        logger.warning(f"Configured schemas directory not found: {schemas_dir}")
+        logger.info(f"Falling back to default schemas directory: {default_schemas_dir}")
+        schemas_dir = default_schemas_dir
     
     # Check if the schemas directory exists
     if not os.path.exists(schemas_dir):
@@ -97,7 +104,7 @@ def load_config() -> Dict[str, Any]:
         Configuration dictionary
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(script_dir, "test_config", "config.json")
+    config_path = os.path.join(script_dir, "config", "config.json")
     
     try:
         with open(config_path, "r") as f:
@@ -660,7 +667,7 @@ def add_schema(schema_name: str, schema_definition: str, description: str = "", 
     """
     Add a new schema by creating a persistent schema file.
     
-    This tool creates a schema file in the test_config/schemas directory.
+    This tool creates a schema file in the config/schemas directory.
     The server must be restarted for the new schema to become available as a tool.
     
     Args:
@@ -710,7 +717,7 @@ def add_schema(schema_name: str, schema_definition: str, description: str = "", 
         
         # Get the schemas directory path
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        schemas_dir = os.path.join(script_dir, "test_config", "schemas")
+        schemas_dir = os.path.join(script_dir, "config", "schemas")
         
         # Ensure the schemas directory exists
         os.makedirs(schemas_dir, exist_ok=True)
@@ -760,10 +767,83 @@ def add_schema(schema_name: str, schema_definition: str, description: str = "", 
             "message": error_msg
         }
 
+@mcp.tool()
+def delete_schema(schema_name: str) -> Dict[str, Any]:
+    """
+    Delete an existing schema file.
+    
+    This tool removes a schema file from the config/schemas directory.
+    The server must be restarted for the schema tool to be removed.
+    
+    Args:
+        schema_name: Name of the schema to delete
+        
+    Returns:
+        Status of the schema deletion
+    """
+    logger.info(f"Attempting to delete schema: {schema_name}")
+    
+    try:
+        # Validate schema name using security validator
+        is_valid, error_msg = SecurityValidator.validate_schema_name(schema_name)
+        if not is_valid:
+            return {
+                "status": "error",
+                "message": error_msg
+            }
+        
+        # Get the schemas directory path
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        schemas_dir = os.path.join(script_dir, "config", "schemas")
+        
+        # Construct file path
+        schema_file_path = os.path.join(schemas_dir, f"{schema_name}.json")
+        
+        # Validate the file path to prevent directory traversal
+        is_valid, error_msg = SecurityValidator.validate_file_path(schema_file_path, schemas_dir)
+        if not is_valid:
+            return {
+                "status": "error",
+                "message": f"Invalid file path: {error_msg}"
+            }
+        
+        # Check if file exists
+        if not os.path.exists(schema_file_path):
+            return {
+                "status": "error",
+                "message": f"Schema '{schema_name}' does not exist"
+            }
+        
+        # Attempt to delete the file
+        try:
+            os.remove(schema_file_path)
+        except OSError as e:
+            return {
+                "status": "error",
+                "message": f"Failed to delete schema file: {str(e)}"
+            }
+        
+        logger.info(f"Successfully deleted schema file: {schema_file_path}")
+        
+        return {
+            "status": "success",
+            "message": f"Schema '{schema_name}' deleted successfully. Restart the MCP server for changes to take effect.",
+            "schema_name": schema_name,
+            "file_path": schema_file_path,
+            "restart_required": True
+        }
+        
+    except Exception as e:
+        error_msg = f"Unexpected error deleting schema: {str(e)}"
+        logger.error(error_msg)
+        return {
+            "status": "error",
+            "message": error_msg
+        }
 
 
-if __name__ == "__main__":
-    # Initialize and run the server
+def main():
+    """Entry point for the MCP server command-line interface."""
     logger.info("Starting Generic Schema MCP Server using FastMCP with AWS Bedrock Claude")
     logger.info(f"Loaded {len(SCHEMAS)} schemas: {list(SCHEMAS.keys())}")
     
@@ -772,3 +852,7 @@ if __name__ == "__main__":
         logger.info("You can add schemas dynamically using the 'add_schema' tool.")
     
     mcp.run(transport='stdio')
+
+
+if __name__ == "__main__":
+    main()

@@ -1,88 +1,91 @@
-# Generic Schema MCP Server (FastMCP Edition)
+# Fixed Schema MCP Server - Complete Documentation
 
 A Model Context Protocol (MCP) server that dynamically loads JSON schemas and generates structured responses using FastMCP. This server automatically creates tools for any JSON schema you provide, making it completely extensible without code changes. Simply add a schema file and get a corresponding tool instantly.
 
+## Overview
+
+This MCP server provides a flexible, schema-driven approach to generating structured responses. It dynamically loads JSON schema files and creates corresponding MCP tools, allowing you to extend functionality without modifying code. The server supports multiple AI providers (AWS Bedrock, OpenAI, Anthropic) with automatic fallback to mock responses.
+
 ## Features
 
-- **🔄 Dynamic Schema Loading**: Automatically loads all `.json` files from `test_config/schemas/`
-- **🛠️ Automatic Tool Generation**: Each schema file becomes a tool named `get_{schema_name}`
-- **🎯 Custom System Prompts**: Each schema can include specialized AI behavior
-- **🤖 Multi-Provider Support**: AWS Bedrock, OpenAI, Anthropic, or Mock responses
-- **⚙️ MCP Configuration**: Set credentials directly in MCP settings
-- **📋 Schema Discovery**: Built-in `list_available_schemas` tool for exploration
-- **🚀 Zero Code Changes**: Add unlimited schemas without touching the server code
-- **FastMCP Integration**: Built on the FastMCP framework for simplified MCP server development
+- **Dynamic Schema Loading**: Automatically loads all `.json` files from `config/schemas/`
+- **Automatic Tool Generation**: Each schema file becomes a tool named `get_{schema_name}`
+- **Custom System Prompts**: Each schema can include specialized AI behavior
+- **Multi-Provider Support**: AWS Bedrock, OpenAI, Anthropic, or Mock responses
+- **Schema Management**: Built-in tools to list, add, and delete schemas at runtime
+- **MCP Configuration**: Set credentials directly in MCP settings
+- **Zero Code Changes**: Add unlimited schemas without touching the server code
+- **FastMCP Integration**: Built on the FastMCP framework for simplified development
 - **Graceful Fallback**: Automatic fallback to mock responses when providers unavailable
-- **Kiro Integration**: Seamlessly works with Kiro as an MCP server
-
-## Current Status: ✅ Fully Operational
-
-**12 Schema Tools Available** (tested and working):
-- API documentation, recipes, weather reports, product info, troubleshooting guides
-- Movie/book reviews, sports stats, person profiles, article summaries
-- User profiles and test schemas
-
-**Multi-Provider AI Support**:
-- AWS Bedrock (4 models) - ✅ Tested with AWS profile
-- OpenAI (4 models) - Ready for API key
-- Anthropic (3 models) - Ready for API key
-- Mock responses - Always available
-
-## Quick Test
-
-```bash
-# Test the server is working
-@fixed-schema list_available_schemas
-
-# Try schema tools
-@fixed-schema get_weather_report query="Weather in Tokyo"
-@fixed-schema get_product_info query="iPhone 15 Pro"
-@fixed-schema get_recipe query="chocolate chip cookies"
-
-# Add custom schemas
-@fixed-schema add_schema schema_name="my_custom_schema" schema_definition="{...}" description="My custom schema"
-```
+- **Security Validation**: Built-in validation to prevent path traversal and injection attacks
 
 ## Installation
 
 ### Prerequisites
 
-- Python 3.8 or higher
-- pip (Python package manager)
-- AWS credentials configured (for AWS Bedrock integration)
-- FastMCP library
+- Python 3.12 or higher
+- pip or pipx (Python package managers)
+- AWS credentials (optional, for AWS Bedrock integration)
 
-### Setup
+### Method 1: pip Installation
 
-#### Prerequisites
-- Python 3.10 or higher
-- `uv` package manager ([install uv](https://docs.astral.sh/uv/getting-started/installation/))
+Install the package using pip:
 
-#### Quick Setup
+```bash
+# Install from source directory
+pip install .
+
+# Install with optional AI provider dependencies
+pip install .[openai]      # For OpenAI support
+pip install .[anthropic]   # For Anthropic support
+pip install .[all]         # For all providers
+
+# Install in editable mode for development
+pip install -e .
+```
+
+After installation, run the server:
+
+```bash
+fixed-schema-mcp-server
+```
+
+### Method 2: pipx Installation (Recommended for Isolation)
+
+Install in an isolated environment using pipx:
+
+```bash
+# Install from source directory
+pipx install .
+
+# Install from git repository
+pipx install git+https://github.com/yourusername/fixed-schema-mcp-server.git
+```
+
+After installation, run the server:
+
+```bash
+fixed-schema-mcp-server
+```
+
+### Method 3: uv (Development)
+
+For development and testing, use uv:
 
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/fixed-schema-mcp-server.git
 cd fixed-schema-mcp-server/fixed_schema_mcp_server
 
-# Test the server (uv will automatically install dependencies)
+# Run the server (uv automatically handles dependencies)
 uv run fastmcp_server.py
 ```
 
-That's it! `uv` automatically handles:
-- Virtual environment creation
-- Dependency installation (fastmcp, boto3, jsonschema)
-- Python version management
+### Method 4: Docker
 
-#### Docker Setup (Alternative)
-
-If you prefer using Docker:
+For containerized deployment:
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/fixed-schema-mcp-server.git
-cd fixed-schema-mcp-server/fixed_schema_mcp_server
-
 # Build the Docker image
 docker build -t fixed-schema-mcp-server .
 
@@ -94,120 +97,100 @@ docker run -it --rm \
   fixed-schema-mcp-server
 ```
 
-**Note**: The Docker container runs the server with stdio transport, suitable for process-based MCP communication.
+## Configuration
 
-## Quick Start
+### AWS Credentials (Optional)
 
-### 1. Configure AWS Credentials (Optional)
+To use AWS Bedrock for generating responses, configure your AWS credentials using one of these methods:
 
-If you want to use AWS Bedrock for generating responses, configure your AWS credentials:
+**Option 1: Environment Variables**
 
 ```bash
-# Configure AWS CLI
-aws configure
+export AWS_ACCESS_KEY_ID="your_access_key"
+export AWS_SECRET_ACCESS_KEY="your_secret_key"
+export AWS_DEFAULT_REGION="us-east-1"
 ```
 
-You'll need to enter:
-- AWS Access Key ID
-- AWS Secret Access Key
-- Default region (choose a region where Bedrock is available, like us-east-1 or us-west-2)
-- Default output format (json)
+**Option 2: AWS Profile**
 
-If AWS credentials are not configured, the server will fall back to mock responses.
+```bash
+export AWS_PROFILE="your-profile"
+```
 
-### 2. Schema Configuration
+**Option 3: MCP Configuration**
 
-The server automatically loads schemas from the `test_config/schemas` directory. The following schemas are included:
+Set credentials in your MCP client configuration (see Integration section below).
 
-- `api_endpoint.json`: Schema for API endpoint documentation
-- `article_summary.json`: Schema for article summaries
-- `movie_review.json`: Schema for movie reviews
-- `person_profile.json`: Schema for person profiles
-- `product_info.json`: Schema for product information
-- `recipe.json`: Schema for cooking recipes
-- `troubleshooting_guide.json`: Schema for troubleshooting guides
+**Note**: If AWS credentials are not configured, the server will automatically fall back to mock responses.
 
-**Adding New Schemas**: Simply create a new `.json` file in the `test_config/schemas` directory following this format:
+### AI Provider Configuration
+
+The server supports multiple AI providers. Configure them via environment variables:
+
+```bash
+# OpenAI
+export OPENAI_API_KEY="sk-proj-your-key"
+
+# Anthropic
+export ANTHROPIC_API_KEY="your-anthropic-key"
+
+# AWS Bedrock (see AWS Credentials above)
+```
+
+### Model Configuration
+
+Edit `config/config.json` to customize AI model settings:
 
 ```json
 {
-  "name": "your_schema_name",
-  "description": "Description of what this schema represents",
-  "schema": {
-    "type": "object",
-    "properties": {
-      "field1": {"type": "string"},
-      "field2": {"type": "number"}
-    },
-    "required": ["field1"]
+  "default_provider": "bedrock",
+  "bedrock": {
+    "model_id": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+    "region": "us-east-1"
   },
-  "system_prompt": "Optional custom system prompt for specialized AI behavior"
+  "openai": {
+    "model": "gpt-4"
+  },
+  "anthropic": {
+    "model": "claude-3-5-sonnet-20241022"
+  }
 }
 ```
 
-The tool `get_your_schema_name` will be automatically available after restarting the server!
+## Usage
 
-### 3. Start the Server
+### Starting the Server
 
-Run the FastMCP server using uv:
+**If installed via pip/pipx:**
+
+```bash
+fixed-schema-mcp-server
+```
+
+**If using uv for development:**
 
 ```bash
 cd fixed_schema_mcp_server
 uv run fastmcp_server.py
 ```
 
-### 4. Configure Kiro
+**With environment variables:**
 
-The server is already configured for Kiro in `.kiro/settings/mcp.json`. The configuration uses `uv`:
-
-```json
-{
-  "mcpServers": {
-    "fixed-schema": {
-      "command": "uv",
-      "args": ["--directory", "/absolute/path/to/fixed_schema_mcp_server", "run", "fastmcp_server.py"],
-      "env": {
-        "FASTMCP_LOG_LEVEL": "DEBUG"
-      },
-      "disabled": false,
-      "autoApprove": [
-        "get_api_endpoint",
-        "get_article_summary",
-        "get_movie_review",
-        "get_person_profile",
-        "get_product_info",
-        "get_recipe",
-        "get_troubleshooting_guide",
-        "list_available_schemas",
-        "add_schema"
-      ]
-    }
-  }
-}
+```bash
+AWS_PROFILE=myprofile fixed-schema-mcp-server
 ```
 
-**Important**: Replace `/absolute/path/to/fixed_schema_mcp_server` with your actual path.
+### Available Tools
 
-## Using the MCP Tools
+The server provides two types of tools:
 
-The server provides dynamically generated tools based on your schema files:
+1. **Schema-Based Tools**: Dynamically generated from JSON schema files (named `get_{schema_name}`)
+2. **Utility Tools**: Built-in tools for schema management
 
-**Schema-Based Tools** (automatically generated):
-1. `get_api_endpoint`: Get documentation for an API endpoint
-2. `get_article_summary`: Get a summary of an article or topic
-3. `get_movie_review`: Get movie reviews and ratings
-4. `get_person_profile`: Get profile information about a person
-5. `get_product_info`: Get detailed information about a product
-6. `get_recipe`: Get cooking recipes with ingredients and instructions
-7. `get_troubleshooting_guide`: Get a troubleshooting guide for a technical issue
+### Using Schema-Based Tools
 
-**Utility Tools**:
-- `list_available_schemas`: List all available schemas and their descriptions
-- `add_schema`: Create new schema files (requires server restart)
+All schema-based tools accept a `query` parameter and return structured responses:
 
-### Example Usage in Kiro
-
-**Schema-based tools** (all accept a `query` parameter):
 ```
 @fixed-schema get_weather_report query: "Weather in San Francisco"
 @fixed-schema get_product_info query: "iPhone 15 Pro"
@@ -217,13 +200,454 @@ The server provides dynamically generated tools based on your schema files:
 @fixed-schema get_troubleshooting_guide query: "computer won't start"
 @fixed-schema get_article_summary query: "artificial intelligence"
 @fixed-schema get_movie_review query: "The Matrix"
+@fixed-schema get_book_review query: "1984 by George Orwell"
+@fixed-schema get_sports_stats query: "NBA finals 2024"
 ```
 
-**Utility tools**:
+### Using Utility Tools
+
+**List all available schemas:**
+
 ```
 @fixed-schema list_available_schemas
-@fixed-schema add_schema schema_name: "book_review" schema_definition: "{...}" description: "Book reviews"
 ```
+
+**Add a new schema:**
+
+```
+@fixed-schema add_schema schema_name: "book_review" schema_definition: "{...}" description: "Book review schema"
+```
+
+**Delete a schema:**
+
+```
+@fixed-schema delete_schema schema_name: "old_schema"
+```
+
+Note: After adding or deleting schemas, restart the server for changes to take effect.
+
+## Functions Reference
+
+This section provides detailed documentation for all available tools in the MCP server.
+
+### Schema-Based Tools
+
+Schema-based tools are dynamically generated from JSON schema files in the `config/schemas/` directory. Each schema file automatically creates a corresponding tool named `get_{schema_name}`.
+
+#### Common Parameters
+
+All schema-based tools accept the following parameter:
+
+- **query** (string, required): The input query or request describing what information you want
+
+#### Common Return Format
+
+All schema-based tools return structured JSON data matching their respective schema definitions.
+
+#### Available Schema Tools
+
+##### get_weather_report
+
+Get structured weather information including current conditions and forecasts.
+
+**Parameters:**
+- `query` (string): Location or weather query (e.g., "Weather in San Francisco", "Current conditions in Tokyo")
+
+**Returns:**
+```json
+{
+  "location": "string",
+  "temperature": "number",
+  "conditions": "string",
+  "humidity": "number",
+  "wind_speed": "number",
+  "forecast": [
+    {
+      "day": "string",
+      "high": "number",
+      "low": "number",
+      "conditions": "string"
+    }
+  ]
+}
+```
+
+**Example:**
+```
+@fixed-schema get_weather_report query: "Weather forecast for Seattle this week"
+```
+
+##### get_product_info
+
+Get structured information about products including features, pricing, and descriptions.
+
+**Parameters:**
+- `query` (string): Product name or description (e.g., "iPhone 15 Pro", "Sony WH-1000XM5 headphones")
+
+**Returns:**
+```json
+{
+  "name": "string",
+  "description": "string",
+  "price": "number",
+  "category": "string",
+  "features": ["string"]
+}
+```
+
+**Example:**
+```
+@fixed-schema get_product_info query: "MacBook Pro M3 specifications"
+```
+
+##### get_person_profile
+
+Get structured biographical information about individuals including education, career, and achievements.
+
+**Parameters:**
+- `query` (string): Person's name or description (e.g., "Elon Musk", "Marie Curie biography")
+
+**Returns:**
+```json
+{
+  "name": "string",
+  "bio": "string",
+  "expertise": ["string"],
+  "achievements": ["string"],
+  "education": [
+    {
+      "degree": "string",
+      "institution": "string",
+      "year": "number"
+    }
+  ],
+  "career": [
+    {
+      "position": "string",
+      "organization": "string",
+      "period": "string"
+    }
+  ],
+  "impact": "string"
+}
+```
+
+**Example:**
+```
+@fixed-schema get_person_profile query: "Ada Lovelace"
+```
+
+##### get_recipe
+
+Get structured recipe information including ingredients, instructions, and nutritional details.
+
+**Parameters:**
+- `query` (string): Recipe name or dish (e.g., "chocolate chip cookies", "chicken tikka masala")
+
+**Returns:**
+```json
+{
+  "name": "string",
+  "description": "string",
+  "prep_time": "number",
+  "cook_time": "number",
+  "servings": "number",
+  "ingredients": [
+    {
+      "item": "string",
+      "amount": "string"
+    }
+  ],
+  "instructions": ["string"],
+  "nutrition": {
+    "calories": "number",
+    "protein": "number",
+    "carbs": "number",
+    "fat": "number"
+  }
+}
+```
+
+**Example:**
+```
+@fixed-schema get_recipe query: "homemade pizza dough"
+```
+
+##### get_api_endpoint
+
+Get structured API endpoint documentation including parameters, responses, and examples.
+
+**Parameters:**
+- `query` (string): API endpoint description (e.g., "user authentication endpoint", "REST API for creating posts")
+
+**Returns:**
+```json
+{
+  "endpoint": "string",
+  "method": "string",
+  "description": "string",
+  "parameters": [
+    {
+      "name": "string",
+      "type": "string",
+      "required": "boolean",
+      "description": "string"
+    }
+  ],
+  "response": {
+    "status_code": "number",
+    "body": "object"
+  },
+  "example": "string"
+}
+```
+
+**Example:**
+```
+@fixed-schema get_api_endpoint query: "OAuth2 token endpoint"
+```
+
+##### get_troubleshooting_guide
+
+Get structured troubleshooting guides with step-by-step solutions.
+
+**Parameters:**
+- `query` (string): Problem description (e.g., "computer won't start", "WiFi connection issues")
+
+**Returns:**
+```json
+{
+  "problem": "string",
+  "symptoms": ["string"],
+  "possible_causes": ["string"],
+  "solutions": [
+    {
+      "step": "number",
+      "action": "string",
+      "expected_result": "string"
+    }
+  ],
+  "prevention": ["string"]
+}
+```
+
+**Example:**
+```
+@fixed-schema get_troubleshooting_guide query: "laptop overheating"
+```
+
+##### get_article_summary
+
+Get structured article summaries with key points and takeaways.
+
+**Parameters:**
+- `query` (string): Article topic or title (e.g., "artificial intelligence trends", "climate change impacts")
+
+**Returns:**
+```json
+{
+  "title": "string",
+  "summary": "string",
+  "key_points": ["string"],
+  "main_topics": ["string"],
+  "conclusion": "string"
+}
+```
+
+**Example:**
+```
+@fixed-schema get_article_summary query: "quantum computing breakthroughs"
+```
+
+##### get_movie_review
+
+Get structured movie reviews with ratings and analysis.
+
+**Parameters:**
+- `query` (string): Movie title (e.g., "The Matrix", "Inception")
+
+**Returns:**
+```json
+{
+  "title": "string",
+  "year": "number",
+  "genre": ["string"],
+  "rating": "number",
+  "summary": "string",
+  "strengths": ["string"],
+  "weaknesses": ["string"],
+  "recommendation": "string"
+}
+```
+
+**Example:**
+```
+@fixed-schema get_movie_review query: "Blade Runner 2049"
+```
+
+##### get_book_review
+
+Get structured book reviews with analysis and recommendations.
+
+**Parameters:**
+- `query` (string): Book title and author (e.g., "1984 by George Orwell", "The Great Gatsby")
+
+**Returns:**
+```json
+{
+  "title": "string",
+  "author": "string",
+  "genre": ["string"],
+  "rating": "number",
+  "summary": "string",
+  "themes": ["string"],
+  "strengths": ["string"],
+  "target_audience": "string",
+  "recommendation": "string"
+}
+```
+
+**Example:**
+```
+@fixed-schema get_book_review query: "To Kill a Mockingbird"
+```
+
+##### get_sports_stats
+
+Get structured sports statistics and game information.
+
+**Parameters:**
+- `query` (string): Sports query (e.g., "NBA finals 2024", "World Cup 2022 statistics")
+
+**Returns:**
+```json
+{
+  "event": "string",
+  "date": "string",
+  "teams": ["string"],
+  "score": "string",
+  "key_players": [
+    {
+      "name": "string",
+      "team": "string",
+      "stats": "object"
+    }
+  ],
+  "highlights": ["string"],
+  "outcome": "string"
+}
+```
+
+**Example:**
+```
+@fixed-schema get_sports_stats query: "Super Bowl LVIII highlights"
+```
+
+### Utility Tools
+
+Utility tools provide schema management functionality and server information.
+
+#### list_available_schemas
+
+List all available schemas and their descriptions.
+
+**Parameters:** None
+
+**Returns:**
+```json
+{
+  "available_schemas": {
+    "schema_name": {
+      "name": "string",
+      "description": "string",
+      "tool_name": "string"
+    }
+  },
+  "total_count": "number"
+}
+```
+
+**Example:**
+```
+@fixed-schema list_available_schemas
+```
+
+**Use Cases:**
+- Discover what schema tools are available
+- Check if a specific schema is loaded
+- Get tool names for programmatic access
+
+#### add_schema
+
+Add a new schema by creating a persistent schema file. The server must be restarted for the new schema to become available as a tool.
+
+**Parameters:**
+- `schema_name` (string, required): Name for the new schema (alphanumeric, underscores, and hyphens only)
+- `schema_definition` (string, required): JSON schema definition as a string
+- `description` (string, optional): Description of what the schema represents
+- `system_prompt` (string, optional): Custom system prompt to guide AI behavior for this schema
+
+**Returns:**
+```json
+{
+  "status": "success" | "error",
+  "message": "string",
+  "tool_name": "string",
+  "schema_name": "string",
+  "file_path": "string",
+  "restart_required": true
+}
+```
+
+**Example:**
+```
+@fixed-schema add_schema schema_name: "company_profile" schema_definition: '{"type": "object", "properties": {"name": {"type": "string"}, "industry": {"type": "string"}, "founded": {"type": "number"}}}' description: "Company information schema"
+```
+
+**Security Notes:**
+- Schema names are validated to prevent directory traversal attacks
+- JSON schema definitions are validated before saving
+- System prompts are limited to 2000 characters
+- Files are created in the secure `config/schemas/` directory only
+
+**Use Cases:**
+- Extend the server with custom schemas without code changes
+- Create domain-specific structured response formats
+- Prototype new data structures quickly
+
+#### delete_schema
+
+Delete an existing schema file. The server must be restarted for the schema tool to be removed.
+
+**Parameters:**
+- `schema_name` (string, required): Name of the schema to delete
+
+**Returns:**
+```json
+{
+  "status": "success" | "error",
+  "message": "string",
+  "schema_name": "string",
+  "file_path": "string",
+  "restart_required": true
+}
+```
+
+**Example:**
+```
+@fixed-schema delete_schema schema_name: "old_schema"
+```
+
+**Error Cases:**
+- Schema name validation fails (invalid characters)
+- Schema file does not exist
+- File system permission errors
+- Directory traversal attempt detected
+
+**Use Cases:**
+- Remove obsolete or unused schemas
+- Clean up test schemas
+- Maintain a focused set of production schemas
 
 ## Troubleshooting
 
@@ -277,7 +701,7 @@ If Kiro is not connecting to the MCP server:
 
 The FastMCP server works by:
 
-1. Loading schemas from the `test_config/schemas` directory
+1. Loading schemas from the `config/schemas` directory
 2. Registering MCP tools for each schema type
 3. When a tool is invoked, it:
    - Constructs a prompt for AWS Bedrock Claude 4 Sonnet

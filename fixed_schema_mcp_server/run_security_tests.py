@@ -157,7 +157,7 @@ def cleanup_test_files():
     print("\n🧹 Cleaning up test files...")
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    schemas_dir = os.path.join(script_dir, "test_config", "schemas")
+    schemas_dir = os.path.join(script_dir, "config", "schemas")
     
     test_files = [
         "security_test_valid.json",

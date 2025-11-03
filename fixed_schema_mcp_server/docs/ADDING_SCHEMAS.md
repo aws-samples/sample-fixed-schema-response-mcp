@@ -15,12 +15,12 @@ The Generic MCP server automatically loads JSON schemas and creates correspondin
 
 ### Step 1: Create a Schema File (That's It!)
 
-Create a new JSON file in the `fixed_schema_mcp_server/test_config/schemas/` directory.
+Create a new JSON file in the `fixed_schema_mcp_server/config/schemas/` directory.
 
 **Example: Creating a `book_review.json` schema**
 
 ```bash
-cd fixed_schema_mcp_server/test_config/schemas
+cd fixed_schema_mcp_server/config/schemas
 ```
 
 Create `book_review.json`:
@@ -306,7 +306,7 @@ Add descriptions for better AI understanding:
 
 The server automatically creates tools for each schema file:
 
-1. **File Discovery**: Scans `test_config/schemas/*.json` files
+1. **File Discovery**: Scans `config/schemas/*.json` files
 2. **Schema Loading**: Loads each JSON schema definition
 3. **Tool Creation**: Creates a function named `get_{schema_name}`
 4. **Tool Registration**: Registers the tool with the MCP framework
@@ -354,7 +354,7 @@ import jsonschema
 
 def test_book_review_schema():
     # Load your schema
-    with open('test_config/schemas/book_review.json', 'r') as f:
+    with open('config/schemas/book_review.json', 'r') as f:
         schema_def = json.load(f)
     
     # Test valid data

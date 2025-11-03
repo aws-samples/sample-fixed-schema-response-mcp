@@ -5,24 +5,39 @@ This guide explains how to integrate the Generic Schema MCP Server with Kiro IDE
 ## Prerequisites
 
 - Kiro IDE installed and running
-- `uv` package manager installed ([install guide](https://docs.astral.sh/uv/getting-started/installation/))
 - Python 3.10 or higher
-- Generic Schema MCP Server downloaded/cloned
+- Generic Schema MCP Server installed or downloaded
+
+## Installation Options
+
+You can run the MCP server in two ways:
+
+### Option A: Install via pip/pipx (Recommended)
+
+Install the package globally or in an isolated environment:
+
+```bash
+# Using pip
+pip install fixed-schema-mcp-server
+
+# Using pipx (isolated environment)
+pipx install fixed-schema-mcp-server
+
+# Or install from source
+cd fixed_schema_mcp_server
+pip install .
+```
+
+### Option B: Run from Source with uv
+
+If you prefer to run from source without installing:
+
+1. Install `uv` package manager ([install guide](https://docs.astral.sh/uv/getting-started/installation/))
+2. Clone or download the Generic Schema MCP Server
 
 ## Step-by-Step Setup
 
-### 1. Get Your Absolute Path
-
-First, navigate to your project directory and get the absolute path:
-
-```bash
-cd fixed_schema_mcp_server
-pwd  # Copy this path for the next step
-```
-
-Example output: `/Users/fanhongy/Project/mcps-proj/fixed_schema_mcp_server`
-
-### 2. Configure Kiro MCP Settings
+### 1. Configure Kiro MCP Settings
 
 Open Kiro and configure the MCP server. You can do this by:
 
@@ -35,9 +50,48 @@ Open Kiro and configure the MCP server. You can do this by:
 - Search for "MCP" settings
 - Add a new MCP server
 
-### 3. Add Server Configuration
+### 2. Add Server Configuration
 
-Add this configuration to your `.kiro/settings/mcp.json`:
+Choose the configuration that matches your installation method:
+
+#### Configuration for pip/pipx Installation
+
+```json
+{
+  "mcpServers": {
+    "fixed-schema": {
+      "command": "fixed-schema-mcp-server",
+      "env": {
+        "FASTMCP_LOG_LEVEL": "INFO"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "get_api_endpoint",
+        "get_article_summary", 
+        "get_movie_review",
+        "get_person_profile",
+        "get_product_info",
+        "get_recipe",
+        "get_troubleshooting_guide",
+        "list_available_schemas",
+        "add_schema",
+        "delete_schema"
+      ]
+    }
+  }
+}
+```
+
+#### Configuration for uv Run from Source
+
+First, get your absolute path:
+
+```bash
+cd fixed_schema_mcp_server
+pwd  # Copy this path for the configuration
+```
+
+Then add this configuration:
 
 ```json
 {
@@ -63,16 +117,17 @@ Add this configuration to your `.kiro/settings/mcp.json`:
         "get_recipe",
         "get_troubleshooting_guide",
         "list_available_schemas",
-        "add_schema"
+        "add_schema",
+        "delete_schema"
       ]
     }
   }
 }
 ```
 
-**Important**: Replace the path in `--directory` with your actual absolute path from step 1.
+**Important**: Replace `/path/to/your/fixed_schema_mcp_server` with your actual absolute path.
 
-### 4. Test the Connection
+### 3. Test the Connection
 
 After saving the configuration:
 
@@ -248,6 +303,24 @@ The `autoApprove` list in the configuration means Kiro will automatically execut
 ### Environment Variables
 You can add custom environment variables for AWS configuration:
 
+**For pip/pipx installation:**
+```json
+{
+  "mcpServers": {
+    "fixed-schema": {
+      "command": "fixed-schema-mcp-server",
+      "env": {
+        "FASTMCP_LOG_LEVEL": "INFO",
+        "AWS_DEFAULT_REGION": "us-east-1",
+        "AWS_ACCESS_KEY_ID": "your-key-id",
+        "AWS_SECRET_ACCESS_KEY": "your-secret-key"
+      }
+    }
+  }
+}
+```
+
+**For uv run from source:**
 ```json
 {
   "mcpServers": {
@@ -320,6 +393,13 @@ This MCP server provides structured responses for:
    ```
 
 3. **Test the server manually**:
+   
+   If installed via pip/pipx:
+   ```bash
+   fixed-schema-mcp-server
+   ```
+   
+   If running from source:
    ```bash
    cd fixed_schema_mcp_server
    uv run fastmcp_server.py
@@ -397,6 +477,25 @@ This MCP server provides structured responses for:
 
 You can configure different environments for development and production:
 
+**Using pip/pipx installation:**
+```json
+{
+  "mcpServers": {
+    "fixed-schema-dev": {
+      "command": "fixed-schema-mcp-server",
+      "env": {"FASTMCP_LOG_LEVEL": "DEBUG"},
+      "autoApprove": ["get_product_info"]
+    },
+    "fixed-schema-prod": {
+      "command": "fixed-schema-mcp-server",
+      "env": {"FASTMCP_LOG_LEVEL": "ERROR"},
+      "autoApprove": ["get_product_info", "get_person_profile", "get_api_endpoint"]
+    }
+  }
+}
+```
+
+**Using uv run from source:**
 ```json
 {
   "mcpServers": {
@@ -429,7 +528,7 @@ Configure different logging levels based on your needs:
 
 You can extend the server with custom schemas by:
 
-1. Adding new schema files to `test_config/schemas/`
+1. Adding new schema files to `config/schemas/`
 2. Adding corresponding tool functions to `fastmcp_server.py`
 3. Including the new tools in the `autoApprove` list
 
