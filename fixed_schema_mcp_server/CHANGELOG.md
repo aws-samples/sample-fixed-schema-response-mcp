@@ -23,7 +23,7 @@
 
 #### Configuration Methods
 - **MCP Tools**: Use built-in tools for runtime configuration
-- **Config File**: Direct editing of `test_config/config.json`
+- **Config File**: Direct editing of `config/config.json`
 - **Environment Variables**: Support for standard environment variables
 
 #### Documentation

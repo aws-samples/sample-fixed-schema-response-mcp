@@ -62,7 +62,7 @@ new_schema = {
 
 def create_schema_file():
     """Create the new schema file."""
-    with open("test_config/schemas/movie_review.json", "w") as f:
+    with open("config/schemas/movie_review.json", "w") as f:
         json.dump(new_schema, f, indent=2)
     
     print("✅ Created movie_review.json schema file")

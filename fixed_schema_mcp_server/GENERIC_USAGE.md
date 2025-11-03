@@ -5,7 +5,7 @@ The MCP server has been refactored to be completely generic and schema-driven. I
 ## Key Features
 
 ### 🔄 Dynamic Schema Loading
-- Automatically loads all `.json` files from the `test_config/schemas/` directory
+- Automatically loads all `.json` files from the `config/schemas/` directory
 - Each schema file becomes a tool with the name `get_{schema_name}`
 - No code changes needed to add new schemas
 
@@ -80,7 +80,7 @@ For each schema file `{name}.json`, a tool `get_{name}` is automatically created
 ## Adding New Schemas
 
 ### Method 1: File-based (Recommended)
-1. Create a new `.json` file in `test_config/schemas/`
+1. Create a new `.json` file in `config/schemas/`
 2. Follow the schema file format above
 3. Restart the server to load the new schema
 
@@ -122,7 +122,7 @@ for name, info in schemas['available_schemas'].items():
 
 ## Configuration
 
-The server loads configuration from `test_config/config.json`:
+The server loads configuration from `config/config.json`:
 
 ```json
 {

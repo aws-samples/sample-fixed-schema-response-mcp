@@ -6,8 +6,34 @@ This guide explains how to integrate the Generic Schema MCP Server with Q Chat. 
 
 - Q Chat installed and configured
 - Python 3.10 or higher
-- `uv` package manager installed
-- Generic Schema MCP Server set up
+- Generic Schema MCP Server installed or downloaded
+
+## Installation Options
+
+You can run the MCP server in two ways:
+
+### Option A: Install via pip/pipx (Recommended)
+
+Install the package globally or in an isolated environment:
+
+```bash
+# Using pip
+pip install fixed-schema-mcp-server
+
+# Using pipx (isolated environment)
+pipx install fixed-schema-mcp-server
+
+# Or install from source
+cd fixed_schema_mcp_server
+pip install .
+```
+
+### Option B: Run from Source with uv
+
+If you prefer to run from source without installing:
+
+1. Install `uv` package manager ([install guide](https://docs.astral.sh/uv/getting-started/installation/))
+2. Clone or download the Generic Schema MCP Server
 
 ## Configuration
 
@@ -32,7 +58,35 @@ Q Chat's MCP configuration is typically located in one of these files:
 
 ### Step 2: Add Generic Schema MCP Server
 
-Add the following configuration to Q Chat's MCP configuration file:
+Choose the configuration that matches your installation method:
+
+#### Configuration for pip/pipx Installation
+
+```json
+{
+  "mcpServers": {
+    "fixed-schema": {
+      "command": "fixed-schema-mcp-server",
+      "env": {
+        "FASTMCP_LOG_LEVEL": "INFO"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "get_product_info",
+        "get_article_summary", 
+        "get_person_profile",
+        "get_api_endpoint",
+        "get_troubleshooting_guide",
+        "list_available_schemas",
+        "add_schema",
+        "delete_schema"
+      ]
+    }
+  }
+}
+```
+
+#### Configuration for uv Run from Source
 
 ```json
 {
@@ -54,7 +108,10 @@ Add the following configuration to Q Chat's MCP configuration file:
         "get_article_summary", 
         "get_person_profile",
         "get_api_endpoint",
-        "get_troubleshooting_guide"
+        "get_troubleshooting_guide",
+        "list_available_schemas",
+        "add_schema",
+        "delete_schema"
       ]
     }
   }
@@ -70,6 +127,33 @@ Add the following configuration to Q Chat's MCP configuration file:
 
 If Q Chat already has other MCP servers configured, your complete configuration might look like:
 
+**Using pip/pipx installation:**
+```json
+{
+  "mcpServers": {
+    "fixed-schema": {
+      "command": "fixed-schema-mcp-server",
+      "env": {
+        "FASTMCP_LOG_LEVEL": "INFO"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "get_product_info",
+        "get_article_summary", 
+        "get_person_profile",
+        "get_api_endpoint",
+        "get_troubleshooting_guide"
+      ]
+    },
+    "other-mcp-server": {
+      "command": "other-command",
+      "args": ["other-args"]
+    }
+  }
+}
+```
+
+**Using uv run from source:**
 ```json
 {
   "mcpServers": {
@@ -206,6 +290,13 @@ Q Chat: {
    ```
 
 2. **Test the server manually:**
+   
+   If installed via pip/pipx:
+   ```bash
+   fixed-schema-mcp-server
+   ```
+   
+   If running from source:
    ```bash
    cd /path/to/your/fixed_schema_mcp_server
    uv run fastmcp_server.py
@@ -272,6 +363,23 @@ Q Chat: {
 
 You can add custom environment variables to the MCP configuration:
 
+**For pip/pipx installation:**
+```json
+{
+  "mcpServers": {
+    "fixed-schema": {
+      "command": "fixed-schema-mcp-server",
+      "env": {
+        "FASTMCP_LOG_LEVEL": "DEBUG",
+        "AWS_DEFAULT_REGION": "us-west-2",
+        "MCP_TIMEOUT": "30"
+      }
+    }
+  }
+}
+```
+
+**For uv run from source:**
 ```json
 {
   "mcpServers": {
@@ -298,7 +406,7 @@ Available logging levels:
 
 ## Alternative Configuration Methods
 
-### Method 1: Direct Python Execution
+### Method 1: Direct Python Execution (from source)
 
 ```json
 {
@@ -309,6 +417,24 @@ Available logging levels:
       "env": {
         "PYTHONPATH": "/path/to/your/fixed_schema_mcp_server"
       }
+    }
+  }
+}
+```
+
+### Method 2: Using pip/pipx Installation
+
+This is the recommended approach for production use:
+
+```bash
+# Install once
+pipx install fixed-schema-mcp-server
+
+# Then use simple configuration
+{
+  "mcpServers": {
+    "fixed-schema": {
+      "command": "fixed-schema-mcp-server"
     }
   }
 }

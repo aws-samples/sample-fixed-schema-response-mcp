@@ -45,7 +45,7 @@ The server provides built-in tools for configuration management:
 
 ### Method 2: Direct Config File Editing
 
-Edit `fixed_schema_mcp_server/test_config/config.json`:
+Edit `fixed_schema_mcp_server/config/config.json`:
 
 ```json
 {
