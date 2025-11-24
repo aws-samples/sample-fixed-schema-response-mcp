@@ -24,51 +24,10 @@ This MCP server provides a flexible, schema-driven approach to generating struct
 ### Prerequisites
 
 - Python 3.12 or higher
-- pip or pipx (Python package managers)
+- uv (Python package manager) - [Installation Guide](https://docs.astral.sh/uv/getting-started/installation/)
 - AWS credentials (optional, for AWS Bedrock integration)
 
-### Method 1: pip Installation
-
-Install the package using pip:
-
-```bash
-# Install from source directory
-pip install .
-
-# Install with optional AI provider dependencies
-pip install .[openai]      # For OpenAI support
-pip install .[anthropic]   # For Anthropic support
-pip install .[all]         # For all providers
-
-# Install in editable mode for development
-pip install -e .
-```
-
-After installation, run the server:
-
-```bash
-fixed-schema-mcp-server
-```
-
-### Method 2: pipx Installation (Recommended for Isolation)
-
-Install in an isolated environment using pipx:
-
-```bash
-# Install from source directory
-pipx install .
-
-# Install from git repository
-pipx install git+https://github.com/yourusername/fixed-schema-mcp-server.git
-```
-
-After installation, run the server:
-
-```bash
-fixed-schema-mcp-server
-```
-
-### Method 3: uv (Development)
+### Method 1: uv (Recommended)
 
 For development and testing, use uv:
 
@@ -81,7 +40,25 @@ cd fixed-schema-mcp-server/fixed_schema_mcp_server
 uv run fastmcp_server.py
 ```
 
-### Method 4: Docker
+### Method 2: uv tool install
+
+Install as a tool using uv:
+
+```bash
+# Install from source directory
+uv tool install .
+
+# Install from git repository
+uv tool install git+https://github.com/yourusername/fixed-schema-mcp-server.git
+```
+
+After installation, run the server:
+
+```bash
+fixed-schema-mcp-server
+```
+
+### Method 3: Docker
 
 For containerized deployment:
 
@@ -161,13 +138,13 @@ Edit `config/config.json` to customize AI model settings:
 
 ### Starting the Server
 
-**If installed via pip/pipx:**
+**If installed via uv tool:**
 
 ```bash
 fixed-schema-mcp-server
 ```
 
-**If using uv for development:**
+**If running from source:**
 
 ```bash
 cd fixed_schema_mcp_server
@@ -177,7 +154,7 @@ uv run fastmcp_server.py
 **With environment variables:**
 
 ```bash
-AWS_PROFILE=myprofile fixed-schema-mcp-server
+AWS_PROFILE=myprofile uv run fastmcp_server.py
 ```
 
 ### Available Tools
