@@ -14,33 +14,23 @@ A Model Context Protocol (MCP) server that dynamically loads JSON schemas and ge
 
 ## Installation
 
-### Using pip
+### Prerequisites
+
+- Python 3.12 or higher
+- uv (Python package manager) - [Installation Guide](https://docs.astral.sh/uv/getting-started/installation/)
+
+### Using uv
 
 ```bash
-# Install from source
-pip install .
-
-# Install with optional AI provider dependencies
-pip install .[openai]
-pip install .[anthropic]
-pip install .[all]
-```
-
-### Using pipx (Isolated Environment)
-
-```bash
-# Install from source
-pipx install .
-
-# Install from git repository
-pipx install git+https://github.com/yourusername/fixed-schema-mcp-server.git
-```
-
-### Using uv (Development)
-
-```bash
+# Run directly from source
 cd fixed_schema_mcp_server
 uv run fastmcp_server.py
+
+# Or install with uv tool
+uv tool install .
+
+# Install from git repository
+uv tool install git+https://github.com/yourusername/fixed-schema-mcp-server.git
 ```
 
 ## Quick Start
@@ -55,10 +45,10 @@ uv run fastmcp_server.py
 
 3. **Run the server**:
    ```bash
-   # If installed via pip/pipx
+   # If installed via uv tool
    fixed-schema-mcp-server
    
-   # Or using uv for development
+   # Or run directly from source
    cd fixed_schema_mcp_server
    uv run fastmcp_server.py
    ```
