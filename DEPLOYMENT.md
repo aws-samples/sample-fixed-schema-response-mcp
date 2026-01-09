@@ -54,13 +54,14 @@ export CREATE_ANTHROPIC_SECRET=true
 cdk deploy
 ```
 
-## Step 2: Get the ALB Endpoint
+## Step 2: Get the CloudFront Endpoint
 
 After deployment, note the outputs:
 
 ```
 Outputs:
-McpFargateStack.AlbDnsName = McpFargateStack-alb-xxxxxxxxx.us-west-2.elb.amazonaws.com
+McpFargateStack.CloudFrontUrl = https://dxxxxxxxxxx.cloudfront.net
+McpFargateStack.McpEndpoint = https://dxxxxxxxxxx.cloudfront.net/mcp
 McpFargateStack.EcrRepositoryUri = xxxxxxxxxxxx.dkr.ecr.us-west-2.amazonaws.com/mcpfargatestack-mcp-server
 McpFargateStack.LogGroupName = /ecs/McpFargateStack/mcp-server
 ```
@@ -68,7 +69,7 @@ McpFargateStack.LogGroupName = /ecs/McpFargateStack/mcp-server
 Test the MCP endpoint:
 
 ```bash
-curl http://<AlbDnsName>/mcp
+curl https://<CloudFrontDnsName>/mcp
 ```
 
 ## Step 3: Configure Kiro MCP Client
@@ -81,7 +82,7 @@ Add to your Kiro MCP config (`.kiro/settings/mcp.json`):
 {
   "mcpServers": {
     "schema-transform": {
-      "url": "http://<AlbDnsName>/mcp",
+      "url": "http://<CloudFrontDnsName>/mcp",
       "disabled": false,
       "autoApprove": [
         "list_available_schemas"
@@ -91,7 +92,7 @@ Add to your Kiro MCP config (`.kiro/settings/mcp.json`):
 }
 ```
 
-Replace `<AlbDnsName>` with the actual ALB DNS name from the deployment output.
+Replace `<CloudFrontDnsName>` with the actual ALB DNS name from the deployment output.
 
 ### Local Development
 
@@ -124,17 +125,17 @@ In Kiro, test the MCP tools:
 ## Architecture Overview
 
 ```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Kiro IDE      │────▶│  Application    │────▶│  ECS Fargate    │
-│   (MCP Client)  │     │  Load Balancer  │     │  (MCP Server)   │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-        │                                               │
-        │  Streamable HTTP                              │
-        │  (POST /mcp)                                  ▼
-        │                                       ┌─────────────────┐
-        └──────────────────────────────────────▶│ Amazon Bedrock  │
-                                                │ (Field Extract) │
-                                                └─────────────────┘
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  Kiro IDE   │───▶│ CloudFront  │───▶│     ALB     │───▶│ ECS Fargate │
+│ (MCP Client)│    │  (HTTPS)    │    │   (HTTP)    │    │ (MCP Server)│
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+                                                                │
+       Streamable HTTP (POST /mcp)                              │
+                                                                ▼
+                                                        ┌─────────────┐
+                                                        │   Amazon    │
+                                                        │   Bedrock   │
+                                                        └─────────────┘
 ```
 
 ## Updating the Deployment
@@ -195,4 +196,4 @@ Ensure the ECS task role has `bedrock:InvokeModel` permissions and the model is 
 
 1. Verify the ALB DNS name is correct
 2. Check that the ALB security group allows inbound traffic on port 80
-3. Ensure the MCP endpoint responds: `curl http://<AlbDnsName>/mcp`
+3. Ensure the MCP endpoint responds: `curl http://<CloudFrontDnsName>/mcp`
