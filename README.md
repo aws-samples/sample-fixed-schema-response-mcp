@@ -2,6 +2,10 @@
 
 A Model Context Protocol (MCP) server that dynamically loads JSON schemas and generates structured responses using FastMCP. Simply add a JSON schema file and get a corresponding tool instantly—no code changes required.
 
+## Architecture
+
+![ECS Fargate Architecture](generated-diagrams/ecs_fargate_architecture.png)
+
 ## Key Features
 
 - **Dynamic Schema Loading**: Automatically loads all JSON schema files from the config directory
@@ -11,6 +15,7 @@ A Model Context Protocol (MCP) server that dynamically loads JSON schemas and ge
 - **Flexible Credentials**: Supports local environment variables or MCP configuration
 - **Zero Code Changes**: Add unlimited schemas without modifying server code
 - **Custom System Prompts**: Each schema can include specialized AI behavior instructions
+- **AWS Deployment Ready**: Deploy to ECS Fargate with included CDK infrastructure
 
 ## Installation
 
@@ -93,6 +98,7 @@ All schema-based tools accept a `query` parameter:
 ## Documentation
 
 - **[Complete Usage Guide](fixed_schema_mcp_server/README.md)** - Detailed documentation with all tools and examples
+- **[Deployment Guide](DEPLOYMENT.md)** - Deploy to AWS ECS Fargate with CDK
 - **[Adding Schemas Guide](fixed_schema_mcp_server/docs/ADDING_SCHEMAS.md)** - How to create custom schemas
 - **[Kiro Integration](fixed_schema_mcp_server/docs/kiro_integration.md)** - Setup guide for Kiro IDE
 - **[Q Chat Integration](fixed_schema_mcp_server/docs/Q_CHAT_INTEGRATION.md)** - Setup guide for Q Chat

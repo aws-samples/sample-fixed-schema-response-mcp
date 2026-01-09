@@ -1,13 +1,25 @@
 #!/usr/bin/env python3
 """
-Generic Schema MCP Server using FastMCP with AWS Bedrock Claude.
+Schema Transform MCP Server using FastMCP.
 
-This module provides a FastMCP server implementation that dynamically loads JSON schemas
-and creates corresponding tools for structured response generation using AWS Bedrock Claude.
+This module provides a FastMCP server implementation that transforms unstructured text
+into structured JSON using user-defined schemas. The server dynamically loads JSON schemas
+and creates corresponding transform_to_{schema_name} tools for field extraction.
+
+Key Features:
+- Extraction-only approach: LLM extracts information from input text, never fabricates data
+- Multi-provider support: AWS Bedrock, OpenAI, and Anthropic
+- Dynamic schema loading: Add schemas without code changes
+- Missing field handling: Returns null for fields not found in input
+
+Architecture:
+1. Schema Registry: Loads JSON schemas from config/schemas/
+2. Transform Tools: Each schema creates a transform_to_{schema_name} tool
+3. Field Extraction Engine: Uses LLM to extract fields from unstructured text
 """
 # /// script
 # dependencies = [
-#     "fastmcp>=0.1.0",
+#     "fastmcp>=2.3.0",
 #     "boto3>=1.28.0",
 #     "botocore>=1.31.0",
 #     "jsonschema>=4.0.0",
@@ -27,7 +39,12 @@ from typing import Any, Dict, List, Callable, Optional
 from functools import partial
 
 from mcp.server.fastmcp import FastMCP
-from .security_config import SecurityValidator, get_secure_config_defaults
+
+# Support both direct execution and module import
+try:
+    from .security_config import SecurityValidator, get_secure_config_defaults
+except ImportError:
+    from security_config import SecurityValidator, get_secure_config_defaults
 
 # Security constants
 MAX_SCHEMA_NAME_LENGTH = 50
@@ -44,7 +61,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server
-mcp = FastMCP("generic-schema")
+# Host must be 0.0.0.0 to accept connections from ALB (not just localhost)
+# stateless_http mode is controlled by FASTMCP_STATELESS_HTTP env var
+stateless_mode = os.getenv("FASTMCP_STATELESS_HTTP", "false").lower() == "true"
+mcp = FastMCP("schema-transform", host="0.0.0.0", port=8000, stateless_http=stateless_mode)
+logger.info(f"FastMCP initialized with stateless_http={stateless_mode}")
+
+# Add health check endpoint for ALB
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request):
+    """Health check endpoint for ALB."""
+    from starlette.responses import JSONResponse
+    return JSONResponse({"status": "healthy", "service": "schema-transform-mcp"})
 
 # Global variables for model clients
 bedrock_runtime = None
@@ -53,13 +81,17 @@ anthropic_client = None
 
 def load_schemas(schemas_dir: str = None) -> Dict[str, Dict[str, Any]]:
     """
-    Load schemas from the specified directory or default config directory.
+    Load JSON schema files from the specified directory or default config directory.
+    
+    Each schema file defines the structure for a transform tool. The schema name
+    (derived from the filename) determines the tool name: transform_to_{schema_name}.
     
     Args:
-        schemas_dir: Optional path to schemas directory. If None, uses default.
+        schemas_dir: Optional path to schemas directory. If None, uses default
+                     config/schemas/ directory relative to this module.
     
     Returns:
-        A dictionary of schema name to schema definition
+        Dictionary mapping schema names to their configuration (description, schema definition)
     """
     schemas = {}
     
@@ -122,11 +154,19 @@ SCHEMAS = load_schemas(SCHEMAS_DIR)
 
 def initialize_model_clients(config: Dict[str, Any]) -> None:
     """
-    Initialize model clients based on configuration and environment variables.
+    Initialize LLM provider clients for field extraction.
+    
     Supports credentials from config file and environment variables (set via MCP config).
+    The initialized clients are used by extract_fields() to perform field extraction
+    from unstructured text.
+    
+    Supported providers:
+    - AWS Bedrock: Uses boto3 client with AWS credentials
+    - OpenAI: Uses OpenAI client with API key
+    - Anthropic: Uses Anthropic client with API key
     
     Args:
-        config: Configuration dictionary
+        config: Configuration dictionary containing provider settings and credentials
     """
     global bedrock_runtime, openai_client, anthropic_client
     
@@ -186,7 +226,6 @@ def initialize_model_clients(config: Dict[str, Any]) -> None:
         
     except Exception as e:
         logger.error(f"Failed to initialize AWS Bedrock client: {e}")
-        logger.info("AWS Bedrock unavailable - will use mock responses if selected")
         bedrock_runtime = None
     
     # OpenAI initialization
@@ -239,16 +278,14 @@ def initialize_model_clients(config: Dict[str, Any]) -> None:
         logger.error(f"Failed to initialize Anthropic client: {e}")
         anthropic_client = None
     
-    # Log current provider
+    # Log current provider status
     logger.info(f"Current provider: {provider}")
     if provider == "aws_bedrock" and bedrock_runtime is None:
-        logger.warning("AWS Bedrock selected but not available - will use mock responses")
+        logger.warning("AWS Bedrock selected but not available - transformation will return errors until configured")
     elif provider == "openai" and openai_client is None:
-        logger.warning("OpenAI selected but not available - will use mock responses")
+        logger.warning("OpenAI selected but not available - transformation will return errors until configured")
     elif provider == "anthropic" and anthropic_client is None:
-        logger.warning("Anthropic selected but not available - will use mock responses")
-    elif provider == "mock":
-        logger.info("Using mock provider - no client initialization needed")
+        logger.warning("Anthropic selected but not available - transformation will return errors until configured")
 
 # Initialize model clients
 initialize_model_clients(CONFIG)
@@ -260,94 +297,203 @@ if not SCHEMAS:
 else:
     logger.info(f"Successfully loaded {len(SCHEMAS)} schemas from files: {list(SCHEMAS.keys())}")
 
-def invoke_model(prompt: str, schema_name: str) -> Dict[str, Any]:
+def build_extraction_prompt(input_text: str, schema: Dict[str, Any]) -> str:
     """
-    Invoke the configured model to generate a response based on the prompt and schema.
+    Build an extraction-only prompt that instructs the LLM to extract fields from input text.
+    
+    The prompt explicitly instructs the LLM to:
+    - ONLY extract information present in the input text
+    - NOT generate, invent, or hallucinate any data
+    - Set fields to null if information cannot be found
+    - Return only valid JSON matching the schema structure
     
     Args:
-        prompt: The prompt to send to the model
-        schema_name: The name of the schema to use for validation
+        input_text: The free-form text to extract information from
+        schema: The JSON schema defining the expected output structure
         
     Returns:
-        The parsed JSON response from the model
+        The formatted extraction prompt ready to send to the LLM
     """
-    model_config = CONFIG.get("model", {})
-    provider = model_config.get("provider", "mock")
-    model_id = model_config.get("model_id", "")
-    parameters = model_config.get("parameters", {})
+    schema_json = json.dumps(schema, indent=2)
     
-    logger.info(f"=== INVOKING MODEL ===")
+    return f"""You are a data extraction assistant. Extract information from the provided text and format it according to the JSON schema below.
+
+CRITICAL RULES:
+1. ONLY extract information that is explicitly present in the input text
+2. DO NOT generate, invent, or hallucinate any data
+3. If a field cannot be found in the input, set it to null
+4. Return ONLY valid JSON matching the schema structure
+5. Do not include any explanations, markdown formatting, or text outside the JSON structure
+
+Schema:
+{schema_json}
+
+Input text to extract from:
+{input_text}
+
+Extract the data and return JSON only:"""
+
+
+def extract_fields(input_text: str, schema_name: str) -> Dict[str, Any]:
+    """
+    Extract fields from input text according to the schema using the configured LLM provider.
+    
+    This function uses an LLM to intelligently extract relevant information from
+    unstructured text and format it according to the specified schema. The LLM is
+    instructed to only extract information present in the input, not generate new content.
+    
+    Args:
+        input_text: The free-form text to extract information from
+        schema_name: The name of the schema to use for extraction
+        
+    Returns:
+        Dictionary containing either:
+        - Extracted data matching the schema structure (on success)
+        - Error information with 'success': False (on failure)
+    """
+    # Validate input - check for None, empty string, or whitespace-only input
+    if input_text is None:
+        return {
+            "success": False,
+            "error": "Input response is empty or invalid: received null input"
+        }
+    
+    if not isinstance(input_text, str):
+        return {
+            "success": False,
+            "error": f"Input response is empty or invalid: expected string, got {type(input_text).__name__}"
+        }
+    
+    if not input_text.strip():
+        return {
+            "success": False,
+            "error": "Input response is empty or invalid: input contains only whitespace"
+        }
+    
+    # Get schema configuration
+    schema_config = SCHEMAS.get(schema_name)
+    if not schema_config:
+        return {
+            "success": False,
+            "error": f"Schema '{schema_name}' not found"
+        }
+    
+    schema = schema_config.get("schema", {})
+    
+    # Get extraction configuration
+    extraction_config = CONFIG.get("extraction", {})
+    provider = extraction_config.get("provider", "")
+    model_id = extraction_config.get("model_id", "")
+    parameters = extraction_config.get("parameters", {})
+    
+    logger.info(f"=== EXTRACTING FIELDS ===")
     logger.info(f"Provider: {provider}")
     logger.info(f"Model ID: {model_id}")
     logger.info(f"Schema name: {schema_name}")
+    logger.info(f"Input text length: {len(input_text)} characters")
+    
+    # Check if provider is available
+    if not provider:
+        return {
+            "success": False,
+            "error": "LLM provider not configured. Please configure a provider (aws_bedrock, openai, or anthropic) in config.json"
+        }
+    
+    # Validate provider is one of the supported types
+    supported_providers = ["aws_bedrock", "openai", "anthropic"]
+    if provider not in supported_providers:
+        return {
+            "success": False,
+            "error": f"LLM provider '{provider}' is not supported. Supported providers: {', '.join(supported_providers)}"
+        }
+    
+    # Check if the specific provider client is available
+    if provider == "aws_bedrock" and bedrock_runtime is None:
+        return {
+            "success": False,
+            "error": "AWS Bedrock client not available. Please check your AWS credentials and region configuration."
+        }
+    elif provider == "openai" and openai_client is None:
+        return {
+            "success": False,
+            "error": "OpenAI client not available. Please set the OPENAI_API_KEY environment variable or configure it in config.json."
+        }
+    elif provider == "anthropic" and anthropic_client is None:
+        return {
+            "success": False,
+            "error": "Anthropic client not available. Please set the ANTHROPIC_API_KEY environment variable or configure it in config.json."
+        }
+    
+    # Build extraction prompt
+    extraction_prompt = build_extraction_prompt(input_text, schema)
     
     # Route to appropriate provider
     if provider == "aws_bedrock":
-        return invoke_aws_bedrock(prompt, schema_name, model_id, parameters)
+        return extract_with_aws_bedrock(extraction_prompt, schema_name, model_id, parameters)
     elif provider == "openai":
-        return invoke_openai(prompt, schema_name, model_id, parameters)
+        return extract_with_openai(extraction_prompt, schema_name, model_id, parameters)
     elif provider == "anthropic":
-        return invoke_anthropic(prompt, schema_name, model_id, parameters)
+        return extract_with_anthropic(extraction_prompt, schema_name, model_id, parameters)
     else:
-        logger.info(f"Using mock provider for {provider}")
-        return generate_mock_response(prompt, schema_name)
+        return {
+            "success": False,
+            "error": f"LLM provider '{provider}' not configured or unavailable"
+        }
 
-def invoke_aws_bedrock(prompt: str, schema_name: str, model_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """Invoke AWS Bedrock model."""
+
+
+
+
+
+
+
+
+
+def extract_with_aws_bedrock(extraction_prompt: str, schema_name: str, model_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Extract fields using AWS Bedrock model.
+    
+    Args:
+        extraction_prompt: The extraction prompt with input text and schema
+        schema_name: The name of the schema being extracted to
+        model_id: The Bedrock model ID to use
+        parameters: Model parameters (temperature, max_tokens, etc.)
+        
+    Returns:
+        Extracted data or error dictionary
+    """
     if bedrock_runtime is None:
-        logger.warning("AWS Bedrock client not available, using mock response")
-        return generate_mock_response(prompt, schema_name)
+        return {
+            "success": False,
+            "error": "AWS Bedrock client not available. Please check your AWS credentials and region configuration."
+        }
     
     try:
-        # Get the schema and system prompt
-        schema_config = SCHEMAS.get(schema_name, {})
-        schema = schema_config.get("schema", {})
-        custom_system_prompt = schema_config.get("system_prompt", "")
-        schema_json = json.dumps(schema, indent=2)
-        
-        # Create the system message, using custom prompt if available
-        if custom_system_prompt:
-            system_message = f"""{custom_system_prompt}
-
-Your response must strictly follow this JSON schema:
-
-{schema_json}
-
-Respond ONLY with valid JSON that matches this schema. Do not include any explanations, markdown formatting, or text outside the JSON structure."""
-        else:
-            system_message = f"""You are a helpful assistant that generates structured information in JSON format.
-Please provide accurate and detailed information based on the user's query.
-Your response must strictly follow this JSON schema:
-
-{schema_json}
-
-Respond ONLY with valid JSON that matches this schema. Do not include any explanations, markdown formatting, or text outside the JSON structure."""
-
         # Prepare the request based on model type
         if "anthropic.claude" in model_id or "us.anthropic.claude" in model_id:
             request = {
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": parameters.get("max_tokens", 4096),
-                "temperature": parameters.get("temperature", 0.2),
+                "temperature": parameters.get("temperature", 0.1),
                 "top_p": parameters.get("top_p", 0.9),
-                "system": system_message,
-                "messages": [{"role": "user", "content": prompt}]
+                "messages": [{"role": "user", "content": extraction_prompt}]
             }
         elif "amazon.titan" in model_id:
             request = {
-                "inputText": f"{system_message}\n\nUser: {prompt}",
+                "inputText": extraction_prompt,
                 "textGenerationConfig": {
                     "maxTokenCount": parameters.get("max_tokens", 4096),
-                    "temperature": parameters.get("temperature", 0.2),
+                    "temperature": parameters.get("temperature", 0.1),
                     "topP": parameters.get("top_p", 0.9)
                 }
             }
         else:
-            logger.warning(f"Unknown Bedrock model type: {model_id}")
-            return generate_mock_response(prompt, schema_name)
+            return {
+                "success": False,
+                "error": f"Unknown Bedrock model type: {model_id}"
+            }
         
-        logger.info(f"Attempting to invoke Bedrock model: {model_id}")
-        logger.info(f"Request payload size: {len(json.dumps(request))} characters")
+        logger.info(f"Attempting to extract fields using Bedrock model: {model_id}")
         
         start_time = time.time()
         response = bedrock_runtime.invoke_model(
@@ -356,7 +502,7 @@ Respond ONLY with valid JSON that matches this schema. Do not include any explan
         )
         end_time = time.time()
         
-        logger.info(f"Bedrock API call successful in {end_time - start_time:.2f} seconds")
+        logger.info(f"Bedrock extraction call successful in {end_time - start_time:.2f} seconds")
         
         # Parse response based on model type
         response_body = json.loads(response['body'].read().decode('utf-8'))
@@ -368,130 +514,208 @@ Respond ONLY with valid JSON that matches this schema. Do not include any explan
         else:
             content = str(response_body)
         
-        return extract_json_from_response(content, prompt, schema_name)
+        return parse_extraction_response(content, schema_name)
             
     except Exception as e:
-        logger.error(f"Error invoking Claude: {e}")
-        logger.error(f"Exception type: {type(e).__name__}")
-        import traceback
-        logger.error(f"Full traceback: {traceback.format_exc()}")
-        return generate_mock_response(prompt, schema_name)
+        logger.error(f"Error extracting with Bedrock: {e}")
+        return {
+            "success": False,
+            "error": f"Failed to extract fields: {str(e)}"
+        }
 
-def invoke_openai(prompt: str, schema_name: str, model_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """Invoke OpenAI model."""
+
+def extract_with_openai(extraction_prompt: str, schema_name: str, model_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Extract fields using OpenAI model.
+    
+    Args:
+        extraction_prompt: The extraction prompt with input text and schema
+        schema_name: The name of the schema being extracted to
+        model_id: The OpenAI model ID to use
+        parameters: Model parameters (temperature, max_tokens, etc.)
+        
+    Returns:
+        Extracted data or error dictionary
+    """
     if openai_client is None:
-        logger.warning("OpenAI client not available, using mock response")
-        return generate_mock_response(prompt, schema_name)
+        return {
+            "success": False,
+            "error": "OpenAI client not available. Please set the OPENAI_API_KEY environment variable or configure it in config.json."
+        }
     
     try:
-        # Get the schema and system prompt
-        schema_config = SCHEMAS.get(schema_name, {})
-        schema = schema_config.get("schema", {})
-        custom_system_prompt = schema_config.get("system_prompt", "")
-        schema_json = json.dumps(schema, indent=2)
-        
-        # Create the system message
-        if custom_system_prompt:
-            system_message = f"""{custom_system_prompt}
-
-Your response must strictly follow this JSON schema:
-
-{schema_json}
-
-Respond ONLY with valid JSON that matches this schema. Do not include any explanations, markdown formatting, or text outside the JSON structure."""
-        else:
-            system_message = f"""You are a helpful assistant that generates structured information in JSON format.
-Please provide accurate and detailed information based on the user's query.
-Your response must strictly follow this JSON schema:
-
-{schema_json}
-
-Respond ONLY with valid JSON that matches this schema. Do not include any explanations, markdown formatting, or text outside the JSON structure."""
-
         start_time = time.time()
         response = openai_client.chat.completions.create(
             model=model_id,
             messages=[
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": extraction_prompt}
             ],
-            temperature=parameters.get("temperature", 0.2),
+            temperature=parameters.get("temperature", 0.1),
             top_p=parameters.get("top_p", 0.9),
             max_tokens=parameters.get("max_tokens", 4096)
         )
         end_time = time.time()
         
-        logger.info(f"OpenAI API call successful in {end_time - start_time:.2f} seconds")
+        logger.info(f"OpenAI extraction call successful in {end_time - start_time:.2f} seconds")
         
         content = response.choices[0].message.content
-        return extract_json_from_response(content, prompt, schema_name)
+        return parse_extraction_response(content, schema_name)
         
     except Exception as e:
-        logger.error(f"Error invoking OpenAI: {e}")
-        return generate_mock_response(prompt, schema_name)
+        logger.error(f"Error extracting with OpenAI: {e}")
+        return {
+            "success": False,
+            "error": f"Failed to extract fields: {str(e)}"
+        }
 
-def invoke_anthropic(prompt: str, schema_name: str, model_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
-    """Invoke Anthropic model."""
+
+def extract_with_anthropic(extraction_prompt: str, schema_name: str, model_id: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Extract fields using Anthropic model.
+    
+    Args:
+        extraction_prompt: The extraction prompt with input text and schema
+        schema_name: The name of the schema being extracted to
+        model_id: The Anthropic model ID to use
+        parameters: Model parameters (temperature, max_tokens, etc.)
+        
+    Returns:
+        Extracted data or error dictionary
+    """
     if anthropic_client is None:
-        logger.warning("Anthropic client not available, using mock response")
-        return generate_mock_response(prompt, schema_name)
+        return {
+            "success": False,
+            "error": "Anthropic client not available. Please set the ANTHROPIC_API_KEY environment variable or configure it in config.json."
+        }
     
     try:
-        # Get the schema and system prompt
-        schema_config = SCHEMAS.get(schema_name, {})
-        schema = schema_config.get("schema", {})
-        custom_system_prompt = schema_config.get("system_prompt", "")
-        schema_json = json.dumps(schema, indent=2)
-        
-        # Create the system message
-        if custom_system_prompt:
-            system_message = f"""{custom_system_prompt}
-
-Your response must strictly follow this JSON schema:
-
-{schema_json}
-
-Respond ONLY with valid JSON that matches this schema. Do not include any explanations, markdown formatting, or text outside the JSON structure."""
-        else:
-            system_message = f"""You are a helpful assistant that generates structured information in JSON format.
-Please provide accurate and detailed information based on the user's query.
-Your response must strictly follow this JSON schema:
-
-{schema_json}
-
-Respond ONLY with valid JSON that matches this schema. Do not include any explanations, markdown formatting, or text outside the JSON structure."""
-
         start_time = time.time()
         response = anthropic_client.messages.create(
             model=model_id,
-            system=system_message,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=parameters.get("temperature", 0.2),
+            messages=[{"role": "user", "content": extraction_prompt}],
+            temperature=parameters.get("temperature", 0.1),
             top_p=parameters.get("top_p", 0.9),
             max_tokens=parameters.get("max_tokens", 4096)
         )
         end_time = time.time()
         
-        logger.info(f"Anthropic API call successful in {end_time - start_time:.2f} seconds")
+        logger.info(f"Anthropic extraction call successful in {end_time - start_time:.2f} seconds")
         
         content = response.content[0].text
-        return extract_json_from_response(content, prompt, schema_name)
+        return parse_extraction_response(content, schema_name)
         
     except Exception as e:
-        logger.error(f"Error invoking Anthropic: {e}")
-        return generate_mock_response(prompt, schema_name)
+        logger.error(f"Error extracting with Anthropic: {e}")
+        return {
+            "success": False,
+            "error": f"Failed to extract fields: {str(e)}"
+        }
 
-def extract_json_from_response(content: str, prompt: str, schema_name: str) -> Dict[str, Any]:
-    """Extract JSON from model response."""
-    logger.info(f"Model response length: {len(content)} characters")
+
+def ensure_schema_structure(data: Any, schema: Dict[str, Any]) -> Any:
+    """
+    Ensure the data conforms to the schema structure, setting missing fields to null.
+    
+    This function recursively processes the data to ensure all fields defined in the
+    schema are present. Missing required fields are set to null rather than being omitted.
+    
+    Args:
+        data: The extracted data (may be partial)
+        schema: The JSON schema defining the expected structure
+        
+    Returns:
+        Data with all schema fields present (missing fields set to null)
+    """
+    schema_type = schema.get("type", "object")
+    
+    if schema_type == "object":
+        properties = schema.get("properties", {})
+        
+        # If data is not a dict, return a dict with all fields set to null
+        if not isinstance(data, dict):
+            result = {}
+            for field_name, field_schema in properties.items():
+                result[field_name] = None
+            return result
+        
+        result = dict(data)  # Copy the data
+        
+        # Ensure all schema properties exist
+        for field_name, field_schema in properties.items():
+            if field_name not in result:
+                # Field is missing, set to null
+                result[field_name] = None
+            elif result[field_name] is not None:
+                # Field exists and is not null, recursively ensure structure for nested objects
+                field_type = field_schema.get("type")
+                if field_type == "object":
+                    result[field_name] = ensure_schema_structure(result[field_name], field_schema)
+                elif field_type == "array":
+                    items_schema = field_schema.get("items", {})
+                    if isinstance(result[field_name], list) and items_schema.get("type") == "object":
+                        result[field_name] = [
+                            ensure_schema_structure(item, items_schema) 
+                            for item in result[field_name]
+                        ]
+        
+        return result
+    
+    elif schema_type == "array":
+        items_schema = schema.get("items", {})
+        
+        # If data is not a list, return null
+        if not isinstance(data, list):
+            return None
+        
+        # Process each item if items are objects
+        if items_schema.get("type") == "object":
+            return [ensure_schema_structure(item, items_schema) for item in data]
+        
+        return data
+    
+    else:
+        # For primitive types, return the data as-is
+        return data
+
+
+def parse_extraction_response(content: str, schema_name: str) -> Dict[str, Any]:
+    """
+    Parse the LLM response and extract JSON data.
+    
+    This function parses the LLM response, extracts JSON data, and ensures
+    the result conforms to the schema structure. Missing fields are set to null
+    to preserve the schema structure even with partial data.
+    
+    Args:
+        content: The raw response content from the LLM
+        schema_name: The name of the schema for context
+        
+    Returns:
+        Extracted data dictionary or error dictionary
+    """
+    # Handle empty or None content
+    if content is None:
+        logger.error("LLM returned null response")
+        return {
+            "success": False,
+            "error": "Failed to extract fields from input: LLM returned empty response"
+        }
+    
+    if not content.strip():
+        logger.error("LLM returned empty response")
+        return {
+            "success": False,
+            "error": "Failed to extract fields from input: LLM returned empty response"
+        }
+    
+    logger.info(f"Parsing extraction response, length: {len(content)} characters")
     
     try:
         # Look for JSON content
         if content.strip().startswith('{') and content.strip().endswith('}'):
-            result = json.loads(content)
+            result = json.loads(content.strip())
         else:
             # Try to extract JSON from markdown code blocks
-            import re
             json_match = re.search(r'```json\s*([\s\S]*?)\s*```', content)
             if json_match:
                 result = json.loads(json_match.group(1))
@@ -501,139 +725,91 @@ def extract_json_from_response(content: str, prompt: str, schema_name: str) -> D
                 if json_match:
                     result = json.loads(json_match.group(0))
                 else:
-                    logger.warning("Failed to extract JSON from model response, using mock response")
-                    return generate_mock_response(prompt, schema_name)
+                    logger.error(f"No JSON structure found in LLM response: {content[:200]}...")
+                    return {
+                        "success": False,
+                        "error": "Failed to extract fields from input: No valid JSON structure found in LLM response"
+                    }
+        
+        # Ensure the result conforms to the schema structure with missing fields set to null
+        schema_config = SCHEMAS.get(schema_name, {})
+        schema = schema_config.get("schema", {})
+        
+        if schema:
+            result = ensure_schema_structure(result, schema)
         
         return result
         
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse model response as JSON: {e}")
-        logger.error(f"Raw response: {content}")
-        return generate_mock_response(prompt, schema_name)
+        logger.error(f"Failed to parse extraction response as JSON: {e}")
+        logger.error(f"Raw content (first 500 chars): {content[:500]}")
+        return {
+            "success": False,
+            "error": f"Failed to extract fields from input: Invalid JSON in LLM response - {str(e)}"
+        }
 
-def generate_mock_response(prompt: str, schema_name: str) -> Dict[str, Any]:
-    """
-    Generate a mock response based on the schema definition.
-    
-    Args:
-        prompt: The prompt that would have been sent to Claude
-        schema_name: The name of the schema to use
-        
-    Returns:
-        A mock response that matches the schema
-    """
-    logger.info(f"Generating mock response for schema: {schema_name}")
-    
-    schema_config = SCHEMAS.get(schema_name)
-    if not schema_config:
-        return {"error": f"Unknown schema: {schema_name}"}
-    
-    schema = schema_config.get("schema", {})
-    
-    def generate_value_for_type(prop_schema: Dict[str, Any], field_name: str = "") -> Any:
-        """Generate a mock value based on JSON schema type."""
-        prop_type = prop_schema.get("type", "string")
-        
-        if prop_type == "string":
-            if "email" in field_name.lower():
-                return "example@example.com"
-            elif "phone" in field_name.lower():
-                return "555-123-4567"
-            elif "date" in field_name.lower():
-                return "2025-07-23"
-            else:
-                return f"Example {field_name}" if field_name else "Example value"
-        
-        elif prop_type == "integer":
-            return 42
-        
-        elif prop_type == "number":
-            return 99.99
-        
-        elif prop_type == "boolean":
-            return True
-        
-        elif prop_type == "array":
-            items_schema = prop_schema.get("items", {"type": "string"})
-            return [generate_value_for_type(items_schema, f"{field_name}_item") for _ in range(2)]
-        
-        elif prop_type == "object":
-            obj_properties = prop_schema.get("properties", {})
-            result = {}
-            for prop_name, prop_def in obj_properties.items():
-                result[prop_name] = generate_value_for_type(prop_def, prop_name)
-            return result
-        
-        else:
-            return f"Mock value for {prop_type}"
-    
-    # Generate mock response based on schema
-    try:
-        properties = schema.get("properties", {})
-        mock_response = {}
-        
-        for prop_name, prop_schema in properties.items():
-            mock_response[prop_name] = generate_value_for_type(prop_schema, prop_name)
-        
-        return mock_response
-        
-    except Exception as e:
-        logger.error(f"Error generating mock response: {e}")
-        return {"error": f"Failed to generate mock response for schema: {schema_name}"}
+
+
+
+
 
 def create_schema_tool(schema_name: str, schema_config: Dict[str, Any]) -> Callable:
     """
-    Create a tool function for a given schema.
+    Create a transform tool function for a given schema.
     
     Args:
         schema_name: Name of the schema
         schema_config: Schema configuration including description and schema definition
         
     Returns:
-        A tool function that generates responses according to the schema
+        A tool function that transforms input text into structured JSON matching the schema
     """
-    def schema_tool(query: str) -> Dict[str, Any]:
+    def transform_tool(response: str) -> Dict[str, Any]:
         """
-        Generate structured response based on the schema.
+        Transform unstructured text into structured JSON matching the schema.
         
         Args:
-            query: The input query or request
+            response: The free-form text (typically from an LLM) to transform
             
         Returns:
-            Structured response matching the schema
+            Structured JSON matching the schema, or error information
         """
-        logger.info(f"Generating {schema_name} response for: {query}")
+        logger.info(f"Transforming input to {schema_name} schema")
         
-        # Use schema description to create a more specific prompt
-        schema_description = schema_config.get("description", f"information about {schema_name}")
-        prompt = f"Please provide {schema_description} based on this query: {query}"
-        
-        return invoke_model(prompt, schema_name)
+        # Use extract_fields to transform the input text
+        return extract_fields(response, schema_name)
     
     # Set function metadata for MCP
-    schema_tool.__name__ = f"get_{schema_name}"
-    schema_tool.__doc__ = f"""
-    {schema_config.get('description', f'Get {schema_name} information')}.
+    transform_tool.__name__ = f"transform_to_{schema_name}"
+    transform_tool.__doc__ = f"""
+    Transform unstructured text into {schema_config.get('description', f'{schema_name} format')}.
     
     Args:
-        query: The input query or request
+        response: The free-form text to transform into structured JSON
     
     Returns:
-        {schema_name} information in a structured format
+        Structured JSON matching the {schema_name} schema
     """
     
-    return schema_tool
+    return transform_tool
 
 def register_schema_tools():
     """
-    Dynamically register tools for all loaded schemas.
+    Dynamically register transform tools for all loaded schemas.
+    
+    This function creates and registers transform_to_{schema_name} tools
+    for each loaded schema. These tools accept unstructured text and return
+    structured JSON matching the schema.
+    
+    Note: Only transform tools are registered. Content generation tools
+    (get_{schema_name}) are NOT supported by this server.
     """
     for schema_name, schema_config in SCHEMAS.items():
         tool_func = create_schema_tool(schema_name, schema_config)
         
-        # Register the tool with MCP
+        # Register the transform tool with MCP
         mcp.tool()(tool_func)
-        logger.info(f"Registered tool: get_{schema_name}")
+        logger.info(f"Registered tool: transform_to_{schema_name}")
 
 # Register all schema tools
 register_schema_tools()
@@ -642,10 +818,15 @@ register_schema_tools()
 @mcp.tool()
 def list_available_schemas() -> Dict[str, Any]:
     """
-    List all available schemas and their descriptions.
+    List all available schemas and their transform tool names.
+    
+    Returns a dictionary of all loaded schemas with their descriptions
+    and corresponding transform tool names (transform_to_{schema_name}).
     
     Returns:
-        Dictionary containing all available schemas and their descriptions
+        Dictionary containing:
+        - available_schemas: Map of schema names to their info (name, description, tool_name)
+        - total_count: Number of available schemas
     """
     logger.info("Listing available schemas")
     
@@ -654,7 +835,7 @@ def list_available_schemas() -> Dict[str, Any]:
         schemas_info[schema_name] = {
             "name": schema_name,
             "description": schema_config.get("description", "No description available"),
-            "tool_name": f"get_{schema_name}"
+            "tool_name": f"transform_to_{schema_name}"
         }
     
     return {
@@ -667,17 +848,22 @@ def add_schema(schema_name: str, schema_definition: str, description: str = "", 
     """
     Add a new schema by creating a persistent schema file.
     
-    This tool creates a schema file in the config/schemas directory.
-    The server must be restarted for the new schema to become available as a tool.
+    Creates a schema file in the config/schemas directory. After adding a schema,
+    the server must be restarted for the new transform_to_{schema_name} tool
+    to become available.
     
     Args:
-        schema_name: Name for the new schema
+        schema_name: Name for the new schema (alphanumeric, underscores, hyphens only)
         schema_definition: JSON schema definition as a string
-        description: Optional description of the schema
-        system_prompt: Optional custom system prompt for this schema
+        description: Optional description of what the schema represents
+        system_prompt: Optional extraction hints to guide field extraction
         
     Returns:
-        Status of the schema addition
+        Dictionary containing:
+        - status: "success" or "error"
+        - message: Description of the result
+        - tool_name: The transform tool name (transform_to_{schema_name})
+        - restart_required: True (server restart needed)
     """
     logger.info(f"Creating schema file for: {schema_name}")
     
@@ -752,8 +938,8 @@ def add_schema(schema_name: str, schema_definition: str, description: str = "", 
         
         return {
             "status": "success",
-            "message": f"Schema '{schema_name}' file created successfully. Restart the MCP server to make the 'get_{schema_name}' tool available.",
-            "tool_name": f"get_{schema_name}",
+            "message": f"Schema '{schema_name}' file created successfully. Restart the MCP server to make the 'transform_to_{schema_name}' tool available.",
+            "tool_name": f"transform_to_{schema_name}",
             "schema_name": schema_name,
             "file_path": schema_file_path,
             "restart_required": True
@@ -772,14 +958,18 @@ def delete_schema(schema_name: str) -> Dict[str, Any]:
     """
     Delete an existing schema file.
     
-    This tool removes a schema file from the config/schemas directory.
-    The server must be restarted for the schema tool to be removed.
+    Removes a schema file from the config/schemas directory. After deletion,
+    the server must be restarted for the transform_to_{schema_name} tool
+    to be removed.
     
     Args:
         schema_name: Name of the schema to delete
         
     Returns:
-        Status of the schema deletion
+        Dictionary containing:
+        - status: "success" or "error"
+        - message: Description of the result
+        - restart_required: True (server restart needed)
     """
     logger.info(f"Attempting to delete schema: {schema_name}")
     
@@ -843,15 +1033,37 @@ def delete_schema(schema_name: str) -> Dict[str, Any]:
 
 
 def main():
-    """Entry point for the MCP server command-line interface."""
-    logger.info("Starting Generic Schema MCP Server using FastMCP with AWS Bedrock Claude")
+    """
+    Entry point for the Schema Transform MCP Server.
+    
+    Starts the FastMCP server. The transport is determined by the MCP_TRANSPORT
+    environment variable:
+    - 'stdio' (default): For local CLI usage
+    - 'sse': For cloud deployment (ECS Fargate) - legacy but more compatible
+    - 'streamable-http': For cloud deployment (newer protocol)
+    
+    The server provides:
+    - transform_to_{schema_name} tools for each loaded schema
+    - list_available_schemas, add_schema, delete_schema utility tools
+    """
+    logger.info("Starting Schema Transform MCP Server")
     logger.info(f"Loaded {len(SCHEMAS)} schemas: {list(SCHEMAS.keys())}")
     
     if not SCHEMAS:
         logger.warning("No schemas loaded! Server will start but no schema tools will be available.")
         logger.info("You can add schemas dynamically using the 'add_schema' tool.")
     
-    mcp.run(transport='stdio')
+    # Determine transport from environment variable
+    transport = os.getenv("MCP_TRANSPORT", "stdio")
+    
+    if transport in ("streamable-http", "sse"):
+        logger.info(f"Starting with {transport} transport (default: 0.0.0.0:8000)")
+        logger.info(f"Stateless mode: {os.getenv('FASTMCP_STATELESS_HTTP', 'false')}")
+        # FastMCP uses default host/port (0.0.0.0:8000)
+        mcp.run(transport=transport)
+    else:
+        logger.info("Starting with stdio transport")
+        mcp.run(transport='stdio')
 
 
 if __name__ == "__main__":

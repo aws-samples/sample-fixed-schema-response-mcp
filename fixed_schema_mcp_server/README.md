@@ -1,22 +1,22 @@
-# Fixed Schema MCP Server - Complete Documentation
+# Fixed Schema MCP Server - Transform Documentation
 
-A Model Context Protocol (MCP) server that dynamically loads JSON schemas and generates structured responses using FastMCP. This server automatically creates tools for any JSON schema you provide, making it completely extensible without code changes. Simply add a schema file and get a corresponding tool instantly.
+A Model Context Protocol (MCP) server that transforms unstructured text into structured JSON using user-defined schemas. This server dynamically loads JSON schemas and creates corresponding transform tools, allowing you to convert free-form LLM responses into structured data without code changes.
 
 ## Overview
 
-This MCP server provides a flexible, schema-driven approach to generating structured responses. It dynamically loads JSON schema files and creates corresponding MCP tools, allowing you to extend functionality without modifying code. The server supports multiple AI providers (AWS Bedrock, OpenAI, Anthropic) with automatic fallback to mock responses.
+This MCP server provides a schema-driven approach to transforming unstructured text into structured JSON. It dynamically loads JSON schema files and creates corresponding `transform_to_{schema_name}` tools. The server uses an LLM (AWS Bedrock, OpenAI, or Anthropic) to intelligently extract fields from input text - it does NOT generate content, only extracts information that is explicitly present in the input.
 
 ## Features
 
 - **Dynamic Schema Loading**: Automatically loads all `.json` files from `config/schemas/`
-- **Automatic Tool Generation**: Each schema file becomes a tool named `get_{schema_name}`
-- **Custom System Prompts**: Each schema can include specialized AI behavior
-- **Multi-Provider Support**: AWS Bedrock, OpenAI, Anthropic, or Mock responses
+- **Automatic Transform Tool Generation**: Each schema file becomes a tool named `transform_to_{schema_name}`
+- **Extraction-Only Approach**: LLM extracts information from input text, never fabricates data
+- **Multi-Provider Support**: AWS Bedrock, OpenAI, or Anthropic for field extraction
 - **Schema Management**: Built-in tools to list, add, and delete schemas at runtime
 - **MCP Configuration**: Set credentials directly in MCP settings
 - **Zero Code Changes**: Add unlimited schemas without touching the server code
 - **FastMCP Integration**: Built on the FastMCP framework for simplified development
-- **Graceful Fallback**: Automatic fallback to mock responses when providers unavailable
+- **Missing Field Handling**: Returns null for fields not found in input text
 - **Security Validation**: Built-in validation to prevent path traversal and injection attacks
 
 ## Installation
@@ -25,7 +25,7 @@ This MCP server provides a flexible, schema-driven approach to generating struct
 
 - Python 3.12 or higher
 - uv (Python package manager) - [Installation Guide](https://docs.astral.sh/uv/getting-started/installation/)
-- AWS credentials (optional, for AWS Bedrock integration)
+- LLM provider credentials (AWS Bedrock, OpenAI, or Anthropic)
 
 ### Method 1: uv (Recommended)
 
@@ -76,11 +76,11 @@ docker run -it --rm \
 
 ## Configuration
 
-### AWS Credentials (Optional)
+### LLM Provider Configuration (Required)
 
-To use AWS Bedrock for generating responses, configure your AWS credentials using one of these methods:
+The server requires an LLM provider for field extraction. Configure one of the following:
 
-**Option 1: Environment Variables**
+**AWS Bedrock:**
 
 ```bash
 export AWS_ACCESS_KEY_ID="your_access_key"
@@ -88,51 +88,49 @@ export AWS_SECRET_ACCESS_KEY="your_secret_key"
 export AWS_DEFAULT_REGION="us-east-1"
 ```
 
-**Option 2: AWS Profile**
+Or use an AWS profile:
 
 ```bash
 export AWS_PROFILE="your-profile"
 ```
 
-**Option 3: MCP Configuration**
-
-Set credentials in your MCP client configuration (see Integration section below).
-
-**Note**: If AWS credentials are not configured, the server will automatically fall back to mock responses.
-
-### AI Provider Configuration
-
-The server supports multiple AI providers. Configure them via environment variables:
+**OpenAI:**
 
 ```bash
-# OpenAI
 export OPENAI_API_KEY="sk-proj-your-key"
-
-# Anthropic
-export ANTHROPIC_API_KEY="your-anthropic-key"
-
-# AWS Bedrock (see AWS Credentials above)
 ```
 
-### Model Configuration
+**Anthropic:**
 
-Edit `config/config.json` to customize AI model settings:
+```bash
+export ANTHROPIC_API_KEY="your-anthropic-key"
+```
+
+### Extraction Configuration
+
+Edit `config/config.json` to configure the extraction settings:
 
 ```json
 {
-  "default_provider": "bedrock",
-  "bedrock": {
-    "model_id": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-    "region": "us-east-1"
+  "server": {
+    "name": "schema-transform",
+    "log_level": "info"
   },
-  "openai": {
-    "model": "gpt-4"
+  "extraction": {
+    "provider": "aws_bedrock",
+    "model_id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+    "parameters": {
+      "temperature": 0.1,
+      "max_tokens": 4096
+    }
   },
-  "anthropic": {
-    "model": "claude-3-5-sonnet-20241022"
+  "schemas": {
+    "path": null
   }
 }
 ```
+
+Note: Low temperature (0.1) is recommended for extraction to ensure deterministic, accurate results.
 
 ## Usage
 
@@ -161,24 +159,21 @@ AWS_PROFILE=myprofile uv run fastmcp_server.py
 
 The server provides two types of tools:
 
-1. **Schema-Based Tools**: Dynamically generated from JSON schema files (named `get_{schema_name}`)
+1. **Transform Tools**: Dynamically generated from JSON schema files (named `transform_to_{schema_name}`)
 2. **Utility Tools**: Built-in tools for schema management
 
-### Using Schema-Based Tools
+### Using Transform Tools
 
-All schema-based tools accept a `query` parameter and return structured responses:
+All transform tools accept a `response` parameter containing the text to transform:
 
 ```
-@fixed-schema get_weather_report query: "Weather in San Francisco"
-@fixed-schema get_product_info query: "iPhone 15 Pro"
-@fixed-schema get_recipe query: "chocolate chip cookies"
-@fixed-schema get_person_profile query: "Elon Musk"
-@fixed-schema get_api_endpoint query: "user authentication API"
-@fixed-schema get_troubleshooting_guide query: "computer won't start"
-@fixed-schema get_article_summary query: "artificial intelligence"
-@fixed-schema get_movie_review query: "The Matrix"
-@fixed-schema get_book_review query: "1984 by George Orwell"
-@fixed-schema get_sports_stats query: "NBA finals 2024"
+@fixed-schema transform_to_weather_report response: "The weather in San Francisco today is sunny with a high of 72°F and low of 58°F. Humidity is at 65% with winds from the west at 12 mph."
+
+@fixed-schema transform_to_product_info response: "The iPhone 15 Pro is Apple's flagship smartphone priced at $999. It features a titanium design, A17 Pro chip, and a 48MP camera system."
+
+@fixed-schema transform_to_recipe response: "To make chocolate chip cookies, you'll need 2 cups flour, 1 cup butter, 1 cup sugar, 2 eggs, and 1 cup chocolate chips. Mix ingredients, form into balls, and bake at 350°F for 12 minutes. Makes 24 cookies."
+
+@fixed-schema transform_to_person_profile response: "Elon Musk is the CEO of Tesla and SpaceX. He studied physics at the University of Pennsylvania and has led the development of electric vehicles and reusable rockets."
 ```
 
 ### Using Utility Tools
@@ -192,7 +187,7 @@ All schema-based tools accept a `query` parameter and return structured response
 **Add a new schema:**
 
 ```
-@fixed-schema add_schema schema_name: "book_review" schema_definition: "{...}" description: "Book review schema"
+@fixed-schema add_schema schema_name: "company_profile" schema_definition: '{"type": "object", "properties": {"name": {"type": "string"}, "industry": {"type": "string"}, "founded": {"type": "number"}}}' description: "Company information schema"
 ```
 
 **Delete a schema:**
@@ -205,328 +200,235 @@ Note: After adding or deleting schemas, restart the server for changes to take e
 
 ## Functions Reference
 
-This section provides detailed documentation for all available tools in the MCP server.
+### Transform Tools
 
-### Schema-Based Tools
-
-Schema-based tools are dynamically generated from JSON schema files in the `config/schemas/` directory. Each schema file automatically creates a corresponding tool named `get_{schema_name}`.
+Transform tools are dynamically generated from JSON schema files in the `config/schemas/` directory. Each schema file automatically creates a corresponding tool named `transform_to_{schema_name}`.
 
 #### Common Parameters
 
-All schema-based tools accept the following parameter:
+All transform tools accept the following parameter:
 
-- **query** (string, required): The input query or request describing what information you want
+- **response** (string, required): The unstructured text to transform into structured JSON
 
-#### Common Return Format
+#### Common Behavior
 
-All schema-based tools return structured JSON data matching their respective schema definitions.
+- **Extraction Only**: The LLM extracts information present in the input text
+- **No Fabrication**: Fields not found in the input are set to `null`
+- **Schema Conformance**: Output always matches the schema structure
 
-#### Available Schema Tools
+#### Available Transform Tools
 
-##### get_weather_report
+##### transform_to_weather_report
 
-Get structured weather information including current conditions and forecasts.
+Transform weather-related text into structured weather data.
 
 **Parameters:**
-- `query` (string): Location or weather query (e.g., "Weather in San Francisco", "Current conditions in Tokyo")
+- `response` (string): Text containing weather information
 
 **Returns:**
 ```json
 {
-  "location": "string",
-  "temperature": "number",
-  "conditions": "string",
-  "humidity": "number",
-  "wind_speed": "number",
-  "forecast": [
-    {
-      "day": "string",
-      "high": "number",
-      "low": "number",
-      "conditions": "string"
-    }
-  ]
+  "location": "string or null",
+  "temperature": "number or null",
+  "conditions": "string or null",
+  "humidity": "number or null",
+  "wind_speed": "number or null",
+  "forecast": "array or null"
 }
 ```
 
 **Example:**
 ```
-@fixed-schema get_weather_report query: "Weather forecast for Seattle this week"
+@fixed-schema transform_to_weather_report response: "Seattle is experiencing rain today with temperatures around 55°F. Humidity is 80% with 10 mph winds."
 ```
 
-##### get_product_info
+##### transform_to_product_info
 
-Get structured information about products including features, pricing, and descriptions.
+Transform product descriptions into structured product data.
 
 **Parameters:**
-- `query` (string): Product name or description (e.g., "iPhone 15 Pro", "Sony WH-1000XM5 headphones")
+- `response` (string): Text containing product information
 
 **Returns:**
 ```json
 {
-  "name": "string",
-  "description": "string",
-  "price": "number",
-  "category": "string",
-  "features": ["string"]
+  "name": "string or null",
+  "description": "string or null",
+  "price": "number or null",
+  "category": "string or null",
+  "features": "array or null"
 }
 ```
 
 **Example:**
 ```
-@fixed-schema get_product_info query: "MacBook Pro M3 specifications"
+@fixed-schema transform_to_product_info response: "The MacBook Pro M3 is a professional laptop with 18-hour battery life, priced at $1999."
 ```
 
-##### get_person_profile
+##### transform_to_person_profile
 
-Get structured biographical information about individuals including education, career, and achievements.
+Transform biographical text into structured profile data.
 
 **Parameters:**
-- `query` (string): Person's name or description (e.g., "Elon Musk", "Marie Curie biography")
+- `response` (string): Text containing information about a person
 
 **Returns:**
 ```json
 {
-  "name": "string",
-  "bio": "string",
-  "expertise": ["string"],
-  "achievements": ["string"],
-  "education": [
-    {
-      "degree": "string",
-      "institution": "string",
-      "year": "number"
-    }
-  ],
-  "career": [
-    {
-      "position": "string",
-      "organization": "string",
-      "period": "string"
-    }
-  ],
-  "impact": "string"
+  "name": "string or null",
+  "bio": "string or null",
+  "expertise": "array or null",
+  "achievements": "array or null",
+  "education": "array or null",
+  "career": "array or null",
+  "impact": "string or null"
 }
 ```
 
-**Example:**
-```
-@fixed-schema get_person_profile query: "Ada Lovelace"
-```
+##### transform_to_recipe
 
-##### get_recipe
-
-Get structured recipe information including ingredients, instructions, and nutritional details.
+Transform recipe descriptions into structured recipe data.
 
 **Parameters:**
-- `query` (string): Recipe name or dish (e.g., "chocolate chip cookies", "chicken tikka masala")
+- `response` (string): Text containing recipe information
 
 **Returns:**
 ```json
 {
-  "name": "string",
-  "description": "string",
-  "prep_time": "number",
-  "cook_time": "number",
-  "servings": "number",
-  "ingredients": [
-    {
-      "item": "string",
-      "amount": "string"
-    }
-  ],
-  "instructions": ["string"],
-  "nutrition": {
-    "calories": "number",
-    "protein": "number",
-    "carbs": "number",
-    "fat": "number"
-  }
+  "name": "string or null",
+  "description": "string or null",
+  "prep_time": "number or null",
+  "cook_time": "number or null",
+  "servings": "number or null",
+  "ingredients": "array or null",
+  "instructions": "array or null",
+  "nutrition": "object or null"
 }
 ```
 
-**Example:**
-```
-@fixed-schema get_recipe query: "homemade pizza dough"
-```
+##### transform_to_api_endpoint
 
-##### get_api_endpoint
-
-Get structured API endpoint documentation including parameters, responses, and examples.
+Transform API documentation text into structured endpoint data.
 
 **Parameters:**
-- `query` (string): API endpoint description (e.g., "user authentication endpoint", "REST API for creating posts")
+- `response` (string): Text containing API endpoint information
 
 **Returns:**
 ```json
 {
-  "endpoint": "string",
-  "method": "string",
-  "description": "string",
-  "parameters": [
-    {
-      "name": "string",
-      "type": "string",
-      "required": "boolean",
-      "description": "string"
-    }
-  ],
-  "response": {
-    "status_code": "number",
-    "body": "object"
-  },
-  "example": "string"
+  "endpoint": "string or null",
+  "method": "string or null",
+  "description": "string or null",
+  "parameters": "array or null",
+  "response": "object or null",
+  "example": "string or null"
 }
 ```
 
-**Example:**
-```
-@fixed-schema get_api_endpoint query: "OAuth2 token endpoint"
-```
+##### transform_to_troubleshooting_guide
 
-##### get_troubleshooting_guide
-
-Get structured troubleshooting guides with step-by-step solutions.
+Transform troubleshooting text into structured guide data.
 
 **Parameters:**
-- `query` (string): Problem description (e.g., "computer won't start", "WiFi connection issues")
+- `response` (string): Text containing troubleshooting information
 
 **Returns:**
 ```json
 {
-  "problem": "string",
-  "symptoms": ["string"],
-  "possible_causes": ["string"],
-  "solutions": [
-    {
-      "step": "number",
-      "action": "string",
-      "expected_result": "string"
-    }
-  ],
-  "prevention": ["string"]
+  "problem": "string or null",
+  "symptoms": "array or null",
+  "possible_causes": "array or null",
+  "solutions": "array or null",
+  "prevention": "array or null"
 }
 ```
 
-**Example:**
-```
-@fixed-schema get_troubleshooting_guide query: "laptop overheating"
-```
+##### transform_to_article_summary
 
-##### get_article_summary
-
-Get structured article summaries with key points and takeaways.
+Transform article text into structured summary data.
 
 **Parameters:**
-- `query` (string): Article topic or title (e.g., "artificial intelligence trends", "climate change impacts")
+- `response` (string): Text containing article content
 
 **Returns:**
 ```json
 {
-  "title": "string",
-  "summary": "string",
-  "key_points": ["string"],
-  "main_topics": ["string"],
-  "conclusion": "string"
+  "title": "string or null",
+  "summary": "string or null",
+  "key_points": "array or null",
+  "main_topics": "array or null",
+  "conclusion": "string or null"
 }
 ```
 
-**Example:**
-```
-@fixed-schema get_article_summary query: "quantum computing breakthroughs"
-```
+##### transform_to_movie_review
 
-##### get_movie_review
-
-Get structured movie reviews with ratings and analysis.
+Transform movie review text into structured review data.
 
 **Parameters:**
-- `query` (string): Movie title (e.g., "The Matrix", "Inception")
+- `response` (string): Text containing movie review information
 
 **Returns:**
 ```json
 {
-  "title": "string",
-  "year": "number",
-  "genre": ["string"],
-  "rating": "number",
-  "summary": "string",
-  "strengths": ["string"],
-  "weaknesses": ["string"],
-  "recommendation": "string"
+  "title": "string or null",
+  "year": "number or null",
+  "genre": "array or null",
+  "rating": "number or null",
+  "summary": "string or null",
+  "strengths": "array or null",
+  "weaknesses": "array or null",
+  "recommendation": "string or null"
 }
 ```
 
-**Example:**
-```
-@fixed-schema get_movie_review query: "Blade Runner 2049"
-```
+##### transform_to_book_review
 
-##### get_book_review
-
-Get structured book reviews with analysis and recommendations.
+Transform book review text into structured review data.
 
 **Parameters:**
-- `query` (string): Book title and author (e.g., "1984 by George Orwell", "The Great Gatsby")
+- `response` (string): Text containing book review information
 
 **Returns:**
 ```json
 {
-  "title": "string",
-  "author": "string",
-  "genre": ["string"],
-  "rating": "number",
-  "summary": "string",
-  "themes": ["string"],
-  "strengths": ["string"],
-  "target_audience": "string",
-  "recommendation": "string"
+  "title": "string or null",
+  "author": "string or null",
+  "genre": "array or null",
+  "rating": "number or null",
+  "summary": "string or null",
+  "themes": "array or null",
+  "strengths": "array or null",
+  "target_audience": "string or null",
+  "recommendation": "string or null"
 }
 ```
 
-**Example:**
-```
-@fixed-schema get_book_review query: "To Kill a Mockingbird"
-```
+##### transform_to_sports_stats
 
-##### get_sports_stats
-
-Get structured sports statistics and game information.
+Transform sports text into structured statistics data.
 
 **Parameters:**
-- `query` (string): Sports query (e.g., "NBA finals 2024", "World Cup 2022 statistics")
+- `response` (string): Text containing sports information
 
 **Returns:**
 ```json
 {
-  "event": "string",
-  "date": "string",
-  "teams": ["string"],
-  "score": "string",
-  "key_players": [
-    {
-      "name": "string",
-      "team": "string",
-      "stats": "object"
-    }
-  ],
-  "highlights": ["string"],
-  "outcome": "string"
+  "event": "string or null",
+  "date": "string or null",
+  "teams": "array or null",
+  "score": "string or null",
+  "key_players": "array or null",
+  "highlights": "array or null",
+  "outcome": "string or null"
 }
-```
-
-**Example:**
-```
-@fixed-schema get_sports_stats query: "Super Bowl LVIII highlights"
 ```
 
 ### Utility Tools
 
-Utility tools provide schema management functionality and server information.
-
 #### list_available_schemas
 
-List all available schemas and their descriptions.
+List all available schemas and their transform tool names.
 
 **Parameters:** None
 
@@ -537,64 +439,36 @@ List all available schemas and their descriptions.
     "schema_name": {
       "name": "string",
       "description": "string",
-      "tool_name": "string"
+      "tool_name": "transform_to_{schema_name}"
     }
   },
   "total_count": "number"
 }
 ```
 
-**Example:**
-```
-@fixed-schema list_available_schemas
-```
-
-**Use Cases:**
-- Discover what schema tools are available
-- Check if a specific schema is loaded
-- Get tool names for programmatic access
-
 #### add_schema
 
-Add a new schema by creating a persistent schema file. The server must be restarted for the new schema to become available as a tool.
+Add a new schema by creating a persistent schema file.
 
 **Parameters:**
-- `schema_name` (string, required): Name for the new schema (alphanumeric, underscores, and hyphens only)
+- `schema_name` (string, required): Name for the new schema
 - `schema_definition` (string, required): JSON schema definition as a string
-- `description` (string, optional): Description of what the schema represents
-- `system_prompt` (string, optional): Custom system prompt to guide AI behavior for this schema
+- `description` (string, optional): Description of the schema
+- `system_prompt` (string, optional): Custom extraction hints
 
 **Returns:**
 ```json
 {
-  "status": "success" | "error",
+  "status": "success",
   "message": "string",
-  "tool_name": "string",
-  "schema_name": "string",
-  "file_path": "string",
+  "tool_name": "transform_to_{schema_name}",
   "restart_required": true
 }
 ```
 
-**Example:**
-```
-@fixed-schema add_schema schema_name: "company_profile" schema_definition: '{"type": "object", "properties": {"name": {"type": "string"}, "industry": {"type": "string"}, "founded": {"type": "number"}}}' description: "Company information schema"
-```
-
-**Security Notes:**
-- Schema names are validated to prevent directory traversal attacks
-- JSON schema definitions are validated before saving
-- System prompts are limited to 2000 characters
-- Files are created in the secure `config/schemas/` directory only
-
-**Use Cases:**
-- Extend the server with custom schemas without code changes
-- Create domain-specific structured response formats
-- Prototype new data structures quickly
-
 #### delete_schema
 
-Delete an existing schema file. The server must be restarted for the schema tool to be removed.
+Delete an existing schema file.
 
 **Parameters:**
 - `schema_name` (string, required): Name of the schema to delete
@@ -602,136 +476,91 @@ Delete an existing schema file. The server must be restarted for the schema tool
 **Returns:**
 ```json
 {
-  "status": "success" | "error",
+  "status": "success",
   "message": "string",
-  "schema_name": "string",
-  "file_path": "string",
   "restart_required": true
 }
 ```
 
-**Example:**
-```
-@fixed-schema delete_schema schema_name: "old_schema"
-```
+## Error Handling
 
-**Error Cases:**
-- Schema name validation fails (invalid characters)
-- Schema file does not exist
-- File system permission errors
-- Directory traversal attempt detected
+The server returns structured error responses:
 
-**Use Cases:**
-- Remove obsolete or unused schemas
-- Clean up test schemas
-- Maintain a focused set of production schemas
+| Error Type | Response |
+|------------|----------|
+| Empty input | `{"success": false, "error": "Input response is empty or invalid"}` |
+| Schema not found | `{"success": false, "error": "Schema '{name}' not found"}` |
+| Provider unavailable | `{"success": false, "error": "LLM provider not configured"}` |
+| Extraction failure | `{"success": false, "error": "Failed to extract fields from input"}` |
+
+## How It Works
+
+The transform server works by:
+
+1. Loading schemas from the `config/schemas` directory
+2. Registering `transform_to_{schema_name}` tools for each schema
+3. When a transform tool is invoked:
+   - Validates the input text is not empty
+   - Builds an extraction-only prompt with the schema
+   - Sends the prompt to the configured LLM provider
+   - Parses the JSON response
+   - Ensures all schema fields are present (missing fields set to null)
+   - Returns the structured data
+
+The LLM is explicitly instructed to:
+- ONLY extract information present in the input text
+- NOT generate, invent, or hallucinate any data
+- Set fields to null if information cannot be found
 
 ## Troubleshooting
 
-### AWS Credentials
+### LLM Provider Issues
 
-If you're not seeing responses from AWS Bedrock:
+If transformations are failing:
 
-1. Check that your AWS credentials are properly configured:
-   ```bash
-   aws sts get-caller-identity
-   ```
+1. **Check provider configuration** in `config/config.json`
+2. **Verify credentials** are set correctly
+3. **Test provider access** manually
 
-2. Verify that your AWS account has access to Amazon Bedrock and the Claude model.
-
-3. If you don't have AWS credentials, the server will automatically fall back to mock responses.
-
-### Dependencies
-
-If you encounter issues with missing dependencies:
-
+For AWS Bedrock:
 ```bash
-# Check uv installation
-uv --version
-
-# Test dependency resolution
-cd fixed_schema_mcp_server
-uv run --help
+aws sts get-caller-identity
+aws bedrock list-foundation-models --region us-east-1
 ```
+
+### Empty or Null Results
+
+If all fields are returning null:
+- Ensure the input text contains relevant information
+- Check that the schema fields match the type of data in the input
+- Review the extraction prompt in logs
 
 ### Kiro Integration
 
 If Kiro is not connecting to the MCP server:
 
-1. **Check that the path in the Kiro MCP configuration is correct**
-2. **Ensure uv is installed and accessible:**
-   ```bash
-   which uv
-   uv --version
-   ```
-3. **Try running the server manually to check for errors:**
+1. Check that the path in the Kiro MCP configuration is correct
+2. Ensure uv is installed and accessible
+3. Try running the server manually to check for errors:
    ```bash
    cd fixed_schema_mcp_server
    uv run fastmcp_server.py
    ```
-4. **Check the absolute path in your Kiro config:**
-   ```bash
-   pwd  # Run this in the fixed_schema_mcp_server directory
-   ```
-
-## How It Works
-
-The FastMCP server works by:
-
-1. Loading schemas from the `config/schemas` directory
-2. Registering MCP tools for each schema type
-3. When a tool is invoked, it:
-   - Constructs a prompt for AWS Bedrock Claude 4 Sonnet
-   - Sends the prompt to Claude with the appropriate schema
-   - Parses and validates the response against the schema
-   - Returns the structured data to Kiro
-
-If AWS Bedrock is not available, it falls back to generating mock responses that match the schema structure.
-
-## Use Cases
-
-- **Product Information**: Get structured information about products
-- **Person Profiles**: Generate structured profiles for individuals
-- **API Documentation**: Create structured API endpoint documentation
-- **Troubleshooting**: Generate step-by-step troubleshooting guides
-- **Article Summaries**: Create structured summaries of articles or topics
 
 ## Testing
-
-You can test the server using the included test scripts:
 
 ```bash
 cd fixed_schema_mcp_server
 
-# Test the generic server functionality
-python test_generic_server.py
+# Run property-based tests
+python -m pytest test_extraction_properties.py -v
 
-# Test schema loading and tool generation
+# Test schema loading
 python -c "
 import fastmcp_server
 print('Loaded schemas:', list(fastmcp_server.SCHEMAS.keys()))
-print('Total tools available:', len(fastmcp_server.SCHEMAS) + 2)  # +2 for utility tools
 "
-
-# Test individual tools (if you have a test client)
-# uv run test_client.py --query "iPhone 15 Pro" --schema "product_info"
 ```
-
-## Deployment Options
-
-### Local Development
-- Use `uv run fastmcp_server.py` for local development and testing
-- Configure with Kiro or Q Chat using the `uv` command approach
-
-### Docker Deployment
-- Use the provided Dockerfile for containerized deployment
-- Suitable for cloud deployment or isolated environments
-- Supports environment variable configuration for AWS credentials
-
-### Cloud Deployment
-- The Docker image can be deployed to any container platform (ECS, Kubernetes, etc.)
-- Configure AWS credentials via environment variables or IAM roles
-- The server uses stdio transport, suitable for process-based communication
 
 ## License
 

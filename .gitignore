@@ -8,11 +8,15 @@ __pycache__/
 *.pyd
 .Python
 
+# CDK 
+cdk.out
+
 # Virtual environments
 venv/
 env/
 ENV/
 test-env/
+.venv
 
 # IDE
 .vscode/
@@ -29,6 +33,7 @@ Thumbs.db
 .coverage
 .pytest_cache/
 htmlcov/
+.hypothesis/
 
 # Distribution
 *.whl
@@ -36,3 +41,7 @@ htmlcov/
 
 # kiro
 .kiro
+
+# node
+
+node_modules/
