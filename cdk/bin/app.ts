@@ -88,7 +88,7 @@ new McpFargateStack(app, 'McpFargateStack', {
   // ECS Configuration - Requirements: 9.1
   cpu: parseIntEnv(process.env.TASK_CPU, 256),
   memoryMiB: parseIntEnv(process.env.TASK_MEMORY, 512),
-  desiredCount: parseIntEnv(process.env.DESIRED_COUNT, 1),
+  desiredCount: parseIntEnv(process.env.DESIRED_COUNT, 2),
   
   // Container Configuration
   containerPort: parseIntEnv(process.env.CONTAINER_PORT, 8000),

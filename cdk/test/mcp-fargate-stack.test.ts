@@ -277,17 +277,18 @@ describe('McpFargateStack', () => {
       // Act
       const stack = new McpFargateStack(app, 'TestStack', {
         env: { account: '123456789012', region: 'us-east-1' },
-        bedrockModelId: 'test-model-id',
+        bedrockRegion: 'us-west-2',
       });
       const template = Template.fromStack(stack);
 
-      // Assert - Container should have Bedrock environment variables
-      // Requirements: 8.2, 8.4 - Configure AWS region and Bedrock model ID
+      // Assert - Container should have AWS_REGION and LOG_LEVEL environment variables
+      // Note: BEDROCK_MODEL_ID is configured in config.json, not via environment variables
+      // Requirements: 8.2 - Configure AWS region for Bedrock access
       template.hasResourceProperties('AWS::ECS::TaskDefinition', {
         ContainerDefinitions: Match.arrayWith([
           Match.objectLike({
             Environment: Match.arrayWith([
-              { Name: 'BEDROCK_MODEL_ID', Value: 'test-model-id' },
+              { Name: 'AWS_REGION', Value: 'us-west-2' },
               { Name: 'LOG_LEVEL', Value: 'INFO' },
             ]),
           }),

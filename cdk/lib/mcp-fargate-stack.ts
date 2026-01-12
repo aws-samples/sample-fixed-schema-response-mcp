@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as ecr_assets from 'aws-cdk-lib/aws-ecr-assets';
@@ -247,6 +248,13 @@ export class McpFargateStack extends cdk.Stack {
    */
   public readonly cloudFrontDistribution: cloudfront.Distribution;
 
+  /**
+   * DynamoDB table for storing MCP session state.
+   * Enables horizontal scaling across multiple Fargate tasks.
+   * Requirements: 1.1, 1.2, 1.3, 1.4
+   */
+  public readonly sessionTable: dynamodb.Table;
+
   constructor(scope: Construct, id: string, props?: McpFargateStackProps) {
     super(scope, id, props);
 
@@ -277,6 +285,24 @@ export class McpFargateStack extends cdk.Stack {
     // Requirements: 7.1 - Create CloudWatch log group for container logs
     // Requirements: 7.3 - Set log retention to 30 days
     this.logGroup = this.createLogGroup();
+
+    // Create DynamoDB table for session storage
+    // Requirements: 1.1, 1.2, 1.3, 1.4 - DynamoDB table for session state
+    this.sessionTable = this.createSessionTable();
+
+    // Add DynamoDB permissions to task role for session storage
+    // Requirements: 2.1, 2.2, 2.3, 2.4, 2.5 - IAM permissions for session table access
+    this.taskRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'DynamoDBSessionPermissions',
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'dynamodb:GetItem',
+        'dynamodb:PutItem',
+        'dynamodb:DeleteItem',
+        'dynamodb:UpdateItem',
+      ],
+      resources: [this.sessionTable.tableArn],
+    }));
 
     // Create ECS cluster with Fargate capacity provider
     // Requirements: 3.1 - Create ECS cluster with Fargate capacity providers
@@ -401,6 +427,22 @@ export class McpFargateStack extends cdk.Stack {
       value: `https://${this.cloudFrontDistribution.distributionDomainName}/mcp`,
       description: 'MCP endpoint URL for Kiro configuration',
       exportName: `${this.stackName}-McpEndpoint`,
+    });
+
+    // Output DynamoDB session table name
+    // Requirements: 7.1 - Output the DynamoDB table name
+    new cdk.CfnOutput(this, 'SessionTableName', {
+      value: this.sessionTable.tableName,
+      description: 'Name of the DynamoDB table for MCP session storage',
+      exportName: `${this.stackName}-SessionTableName`,
+    });
+
+    // Output DynamoDB session table ARN
+    // Requirements: 7.2 - Output the DynamoDB table ARN
+    new cdk.CfnOutput(this, 'SessionTableArn', {
+      value: this.sessionTable.tableArn,
+      description: 'ARN of the DynamoDB table for MCP session storage',
+      exportName: `${this.stackName}-SessionTableArn`,
     });
   }
 
@@ -723,6 +765,32 @@ export class McpFargateStack extends cdk.Stack {
   }
 
   /**
+   * Creates a DynamoDB table for storing MCP session state.
+   * 
+   * The table enables horizontal scaling by externalizing session state
+   * so any Fargate task can retrieve and update sessions.
+   * 
+   * Requirements: 1.1 - Create DynamoDB table with partition key session_id (String)
+   * Requirements: 1.2 - Enable TTL on the ttl attribute
+   * Requirements: 1.3 - Use on-demand billing mode (PAY_PER_REQUEST)
+   * Requirements: 1.4 - Set removal policy to DESTROY
+   * 
+   * @returns The DynamoDB session table
+   */
+  private createSessionTable(): dynamodb.Table {
+    return new dynamodb.Table(this, 'McpSessionTable', {
+      tableName: `${this.stackName}-sessions`,
+      partitionKey: {
+        name: 'session_id',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      timeToLiveAttribute: 'ttl',
+    });
+  }
+
+  /**
    * Creates an ECS cluster with Fargate capacity provider.
    * 
    * The cluster is configured to use Fargate for serverless container execution.
@@ -812,8 +880,11 @@ export class McpFargateStack extends cdk.Stack {
         AWS_REGION: bedrockRegion,
         LOG_LEVEL: 'INFO',
         MCP_TRANSPORT: 'streamable-http',
-        FASTMCP_STATELESS_HTTP: 'true',
-        // Using stateful mode with single task - stateless mode has protocol compatibility issues with Kiro
+        // Session storage configuration
+        // Requirements: 5.1, 5.2, 5.3, 5.8 - Environment variables for session storage
+        SESSION_STORAGE_ENABLED: 'true',
+        SESSION_TABLE_NAME: this.sessionTable.tableName,
+        SESSION_TTL_HOURS: '24',
       },
       // Inject secrets from Secrets Manager
       secrets: Object.keys(secrets).length > 0 ? secrets : undefined,

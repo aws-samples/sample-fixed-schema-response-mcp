@@ -43,8 +43,14 @@ from mcp.server.fastmcp import FastMCP
 # Support both direct execution and module import
 try:
     from .security_config import SecurityValidator, get_secure_config_defaults
+    from .session_manager import DynamoDBSessionManager
+    from .session_store import SessionStore
+    from .dynamodb_http_session_manager import DynamoDBHTTPSessionManager
 except ImportError:
     from security_config import SecurityValidator, get_secure_config_defaults
+    from session_manager import DynamoDBSessionManager
+    from session_store import SessionStore
+    from dynamodb_http_session_manager import DynamoDBHTTPSessionManager
 
 # Security constants
 MAX_SCHEMA_NAME_LENGTH = 50
@@ -62,10 +68,41 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastMCP server
 # Host must be 0.0.0.0 to accept connections from ALB (not just localhost)
-# stateless_http mode is controlled by FASTMCP_STATELESS_HTTP env var
-stateless_mode = os.getenv("FASTMCP_STATELESS_HTTP", "false").lower() == "true"
+# Session storage mode: When DynamoDB session storage is enabled, we don't need stateless mode
+# because sessions are persisted externally and can be accessed by any Fargate task
+session_storage_enabled = os.getenv("SESSION_STORAGE_ENABLED", "false").lower() == "true"
+
+# When DynamoDB session storage is enabled, disable stateless mode to use proper sessions
+# When disabled, fall back to FASTMCP_STATELESS_HTTP env var for backward compatibility
+if session_storage_enabled:
+    stateless_mode = False
+    logger.info("DynamoDB session storage enabled - using stateful mode with external session store")
+else:
+    stateless_mode = os.getenv("FASTMCP_STATELESS_HTTP", "false").lower() == "true"
+    logger.info(f"DynamoDB session storage disabled - stateless_http={stateless_mode}")
+
 mcp = FastMCP("schema-transform", host="0.0.0.0", port=8000, stateless_http=stateless_mode)
 logger.info(f"FastMCP initialized with stateless_http={stateless_mode}")
+
+# Initialize DynamoDB session manager if enabled
+# This replaces FastMCP's internal session manager with our DynamoDB-backed one
+session_manager = None
+dynamo_session_store = None
+if session_storage_enabled:
+    try:
+        dynamo_session_store = SessionStore()
+        session_manager = DynamoDBSessionManager(dynamo_session_store)
+        logger.info("DynamoDBSessionManager initialized successfully")
+        
+        # Inject our custom HTTP session manager into FastMCP
+        # This must be done before streamable_http_app() is called
+        # We'll do this by monkey-patching the _session_manager after app creation
+        logger.info("DynamoDB HTTP session manager will be injected at runtime")
+    except Exception as e:
+        logger.error(f"Failed to initialize DynamoDBSessionManager: {e}")
+        logger.warning("Falling back to default session handling")
+        session_manager = None
+        dynamo_session_store = None
 
 # Add health check endpoint for ALB
 @mcp.custom_route("/health", methods=["GET"])
@@ -1059,6 +1096,27 @@ def main():
     if transport in ("streamable-http", "sse"):
         logger.info(f"Starting with {transport} transport (default: 0.0.0.0:8000)")
         logger.info(f"Stateless mode: {os.getenv('FASTMCP_STATELESS_HTTP', 'false')}")
+        logger.info(f"DynamoDB session storage: {session_storage_enabled}")
+        
+        # If DynamoDB session storage is enabled, inject our custom session manager
+        if session_storage_enabled and dynamo_session_store is not None:
+            logger.info("Injecting DynamoDB HTTP session manager into FastMCP")
+            # Trigger app creation to initialize the internal MCP server
+            _ = mcp.streamable_http_app()
+            
+            # Now replace the session manager with our DynamoDB-backed one
+            custom_session_manager = DynamoDBHTTPSessionManager(
+                app=mcp._mcp_server,
+                session_store=dynamo_session_store,
+                event_store=mcp._event_store,
+                retry_interval=mcp._retry_interval,
+                json_response=mcp.settings.json_response,
+                stateless=False,  # We want stateful with DynamoDB
+                security_settings=mcp.settings.transport_security,
+            )
+            mcp._session_manager = custom_session_manager
+            logger.info("DynamoDB HTTP session manager injected successfully")
+        
         # FastMCP uses default host/port (0.0.0.0:8000)
         mcp.run(transport=transport)
     else:

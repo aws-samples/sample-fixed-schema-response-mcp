@@ -515,7 +515,7 @@ describe('McpFargateStack Property Tests', () => {
   // Validates: Requirements 8.2, 8.4
   // ============================================
   describe('Property 9: Bedrock Environment Configuration', () => {
-    it('should include AWS_REGION and BEDROCK_MODEL_ID environment variables with configured values', () => {
+    it('should include AWS_REGION environment variable with configured value', () => {
       fc.assert(
         fc.property(
           fc.record({
@@ -523,17 +523,6 @@ describe('McpFargateStack Property Tests', () => {
           }),
           (config) => {
             const { template } = createStackWithProps(config);
-
-            // Verify container has Bedrock environment variables
-            template.hasResourceProperties('AWS::ECS::TaskDefinition', {
-              ContainerDefinitions: Match.arrayWith([
-                Match.objectLike({
-                  Environment: Match.arrayWith([
-                    { Name: 'BEDROCK_MODEL_ID', Value: config.bedrockModelId },
-                  ]),
-                }),
-              ]),
-            });
 
             // Verify AWS_REGION is set (will be us-east-1 from our test env)
             template.hasResourceProperties('AWS::ECS::TaskDefinition', {
@@ -654,6 +643,171 @@ describe('McpFargateStack Property Tests', () => {
       template.hasResourceProperties('AWS::ECS::Service', {
         DesiredCount: DEFAULT_STACK_CONFIG.desiredCount,
       });
+    });
+  });
+
+
+  // ============================================
+  // DynamoDB Session Storage Properties
+  // Feature: mcp-dynamodb-session
+  // ============================================
+
+  // ============================================
+  // Property 1: CDK DynamoDB Table Configuration
+  // Feature: mcp-dynamodb-session, Property 1: CDK DynamoDB Table Configuration
+  // Validates: Requirements 1.1, 1.2, 1.3, 1.4
+  // ============================================
+  describe('DynamoDB Session - Property 1: CDK DynamoDB Table Configuration', () => {
+    it('should create DynamoDB table with session_id partition key, TTL enabled, on-demand billing, and DESTROY removal policy', () => {
+      fc.assert(
+        fc.property(
+          newVpcStackPropsArbitrary,
+          (config) => {
+            const { template } = createStackWithProps(config);
+
+            // Verify DynamoDB table is created
+            template.resourceCountIs('AWS::DynamoDB::Table', 1);
+
+            // Verify partition key is session_id of type String
+            template.hasResourceProperties('AWS::DynamoDB::Table', {
+              KeySchema: [
+                {
+                  AttributeName: 'session_id',
+                  KeyType: 'HASH',
+                },
+              ],
+              AttributeDefinitions: [
+                {
+                  AttributeName: 'session_id',
+                  AttributeType: 'S',
+                },
+              ],
+            });
+
+            // Verify TTL is enabled on the 'ttl' attribute
+            template.hasResourceProperties('AWS::DynamoDB::Table', {
+              TimeToLiveSpecification: {
+                AttributeName: 'ttl',
+                Enabled: true,
+              },
+            });
+
+            // Verify on-demand billing mode (PAY_PER_REQUEST)
+            template.hasResourceProperties('AWS::DynamoDB::Table', {
+              BillingMode: 'PAY_PER_REQUEST',
+            });
+
+            // Verify removal policy is DESTROY (DeletionPolicy: Delete)
+            const tables = template.findResources('AWS::DynamoDB::Table');
+            for (const [, table] of Object.entries(tables)) {
+              expect((table as any).DeletionPolicy).toBe('Delete');
+            }
+
+            return true;
+          }
+        ),
+        { numRuns: NUM_RUNS }
+      );
+    });
+  });
+
+
+  // ============================================
+  // Property 2: IAM Task Role DynamoDB Permissions
+  // Feature: mcp-dynamodb-session, Property 2: IAM Task Role DynamoDB Permissions
+  // Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5
+  // ============================================
+  describe('DynamoDB Session - Property 2: IAM Task Role DynamoDB Permissions', () => {
+    it('should grant task role GetItem, PutItem, DeleteItem, UpdateItem permissions scoped to session table', () => {
+      fc.assert(
+        fc.property(
+          newVpcStackPropsArbitrary,
+          (config) => {
+            const { template } = createStackWithProps(config);
+
+            // Get all IAM policies
+            const policies = template.findResources('AWS::IAM::Policy');
+
+            // Track DynamoDB permissions
+            let hasDynamoDBPermissions = false;
+            const requiredActions = [
+              'dynamodb:GetItem',
+              'dynamodb:PutItem',
+              'dynamodb:DeleteItem',
+              'dynamodb:UpdateItem',
+            ];
+
+            for (const [, policy] of Object.entries(policies)) {
+              const statements = (policy as any).Properties?.PolicyDocument?.Statement || [];
+              for (const statement of statements) {
+                const actions = Array.isArray(statement.Action) ? statement.Action : [statement.Action];
+                
+                // Check for DynamoDB permissions
+                if (actions.some((a: string) => a.includes('dynamodb:'))) {
+                  hasDynamoDBPermissions = true;
+                  
+                  // Verify all required actions are present
+                  const dynamoActions = actions.filter((a: string) => a.includes('dynamodb:'));
+                  for (const requiredAction of requiredActions) {
+                    expect(dynamoActions).toContain(requiredAction);
+                  }
+
+                  // Verify no wildcard DynamoDB permissions
+                  expect(dynamoActions).not.toContain('dynamodb:*');
+
+                  // Verify resource is scoped (not *)
+                  const resources = Array.isArray(statement.Resource) ? statement.Resource : [statement.Resource];
+                  for (const resource of resources) {
+                    // Resource should reference the session table, not be a wildcard
+                    if (typeof resource === 'string') {
+                      expect(resource).not.toBe('*');
+                    }
+                  }
+                }
+              }
+            }
+
+            // Verify DynamoDB permissions exist
+            expect(hasDynamoDBPermissions).toBe(true);
+
+            return true;
+          }
+        ),
+        { numRuns: NUM_RUNS }
+      );
+    });
+  });
+
+
+  // ============================================
+  // Property 8: CDK Stack Outputs for DynamoDB Session
+  // Feature: mcp-dynamodb-session, Property 8: CDK Stack Outputs
+  // Validates: Requirements 7.1, 7.2
+  // ============================================
+  describe('DynamoDB Session - Property 8: CDK Stack Outputs', () => {
+    it('should output DynamoDB session table name and ARN', () => {
+      fc.assert(
+        fc.property(
+          newVpcStackPropsArbitrary,
+          (config) => {
+            const { template } = createStackWithProps(config);
+
+            // Get all outputs
+            const outputs = template.findOutputs('*');
+
+            // Verify session table name output exists
+            expect(outputs).toHaveProperty('SessionTableName');
+            expect(outputs.SessionTableName.Export?.Name).toMatch(/SessionTableName$/);
+
+            // Verify session table ARN output exists
+            expect(outputs).toHaveProperty('SessionTableArn');
+            expect(outputs.SessionTableArn.Export?.Name).toMatch(/SessionTableArn$/);
+
+            return true;
+          }
+        ),
+        { numRuns: NUM_RUNS }
+      );
     });
   });
 });

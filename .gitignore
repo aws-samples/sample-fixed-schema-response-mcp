@@ -10,6 +10,7 @@ __pycache__/
 
 # CDK 
 cdk.out
+cdk.context.json
 
 # Virtual environments
 venv/
